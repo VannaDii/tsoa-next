@@ -24,8 +24,24 @@ export abstract class TemplateService<ApiHandlerParameters, ValidationArgsParame
   }
 
   protected buildPromise(methodName: string, controller: Controller | object, validatedArgs: any) {
-    const prototype = Object.getPrototypeOf(controller);
-    const descriptor = Object.getOwnPropertyDescriptor(prototype, methodName);
-    return (descriptor!.value as () => Promise<PropertyDescriptor>).apply(controller, validatedArgs);
+    const ownPrototype = Object.getPrototypeOf(controller);
+    let prototype: object | null = ownPrototype;
+    let descriptor: PropertyDescriptor | undefined;
+
+    // Search up the prototype chain so inherited controller actions can be dispatched.
+    // We stop at Object.prototype because methods above that level are not user actions.
+    while (prototype && prototype !== Object.prototype) {
+      descriptor = Object.getOwnPropertyDescriptor(prototype, methodName);
+      if (descriptor?.value && typeof descriptor.value === 'function') {
+        break;
+      }
+
+      prototype = Object.getPrototypeOf(prototype);
+    }
+
+    // Keep previous behavior when nothing is found by allowing the same
+    // descriptor access failure path to occur on the original prototype.
+    const resolvedDescriptor = descriptor || Object.getOwnPropertyDescriptor(ownPrototype, methodName);
+    return (resolvedDescriptor!.value as (...args: any[]) => Promise<any>).apply(controller, validatedArgs);
   }
 }
