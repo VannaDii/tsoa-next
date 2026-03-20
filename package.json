@@ -1,70 +1,74 @@
 {
   "name": "tsoa-monorepo",
-  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "private": true,
+  "description": "Build swagger-compliant REST APIs using TypeScript and Node",
+  "scripts": {
+    "build": "turbo run build --output-logs=full",
+    "changeset": "changeset",
+    "clean": "turbo run clean --output-logs=full",
+    "fix:deps": "syncpack fix && syncpack format",
+    "lint": "npm run lint:deps && eslint .",
+    "lint:deps": "syncpack lint && syncpack format --check",
+    "lint:fix": "npm run lint -- --fix",
+    "prepare": "husky && npm run build",
+    "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
+    "preversion": "npm run test",
+    "release": "npm run build && changeset publish",
+    "syncpack": "syncpack",
+    "test": "turbo run test --concurrency=1 --output-logs=full",
+    "turbo": "turbo",
+    "typedocs": "typedoc --options ./typedoc.json",
+    "version-packages": "changeset version && npm run fix:deps && npm install --ignore-scripts",
+    "watch": "turbo run watch --parallel --output-logs=full"
+  },
   "keywords": [
-    "typescript",
-    "openapi",
-    "swagger",
-    "server",
+    "codegen",
+    "express",
+    "generation",
+    "hapi.js",
+    "koa",
     "node",
     "node.js",
-    "codegen",
-    "generation",
-    "express",
-    "hapi.js",
-    "koa"
+    "openapi",
+    "server",
+    "swagger",
+    "typescript"
   ],
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{js,ts}": [
-      "yarn run prettier --write",
-      "yarn run lint:fix"
-    ]
-  },
-  "scripts": {
-    "build": "lerna run build --stream",
-    "deploy": "yarn bump && lerna publish from-git",
-    "bump": "lerna version patch -m \"Release v%s\" --force-publish",
-    "clean": "lerna run clean --stream",
-    "prepare": "yarn build",
-    "preversion": "yarn test",
-    "test": "lerna run test --stream --concurrency 1",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "yarn run eslint --ext .ts --fix",
-    "watch": "lerna run watch",
-    "lerna": "lerna",
-    "typedocs": "typedoc --options ./typedoc.json"
-  },
-  "dependencies": {},
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "6.16.0",
-    "@typescript-eslint/parser": "^6.16.0",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "husky": "^4.3.0",
-    "lerna": "^8.1.8",
-    "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
+    "@changesets/cli": "^2.30.0",
+    "@eslint/eslintrc": "^3.3.5",
+    "@eslint/js": "^9.39.4",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "syncpack": "^14.2.0",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.26.7"
+    "turbo": "^2.8.20",
+    "typedoc": "^0.28.17"
   },
-  "resolutions": {
-    "typescript": "^5.2.2"
+  "overrides": {
+    "@tsoa-next/runtime": {
+      "@types/koa": "2.15.0"
+    },
+    "@types/koa": "2.15.0",
+    "@types/node": "24.12.0",
+    "chalk": "4.1.2",
+    "typescript": "^5.9.3"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lukeautry/tsoa.git"
+    "url": "https://github.com/VannaDii/tsoa-next.git"
   },
   "engines": {
-    "yarn": ">=1.9.4",
-    "node": ">=18.0.0"
+    "node": ">=24.14.0",
+    "npm": ">=11.0.0"
   },
   "engineStrict": true,
   "workspaces": [
@@ -72,5 +76,11 @@
     "tests",
     "tests/esm"
   ],
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "npm@11.9.0",
+  "lint-staged": {
+    "*.{js,ts}": [
+      "npm run prettier -- --write",
+      "npm run lint:fix"
+    ]
+  }
 }

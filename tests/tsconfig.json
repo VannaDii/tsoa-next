@@ -5,7 +5,6 @@
     "module": "commonjs",
     "target": "es2021",
     "lib": ["es2021"],
-    "typeRoots": ["node_modules/@types", "./typings"],
     "downlevelIteration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -15,8 +14,8 @@
     "noImplicitAny": false,
     "skipLibCheck": true,
     "paths": {
-      "@tsoa/cli/*": ["../packages/cli/src/*"],
-      "@tsoa/runtime/*": ["../packages/runtime/src/*"]
+      "@tsoa-next/cli/*": ["../packages/cli/src/*"],
+      "@tsoa-next/runtime/*": ["../packages/runtime/src/*"]
     }
   },
   "references": [{ "path": "../packages/runtime" }, { "path": "../packages/cli" }],

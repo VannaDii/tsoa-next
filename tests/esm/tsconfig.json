@@ -6,7 +6,6 @@
     "module": "esnext",
     "target": "ES2021",
     "lib": ["es2021"],
-    "typeRoots": ["node_modules/@types", "../typings"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "moduleResolution": "node",
@@ -14,8 +13,8 @@
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "paths": {
-      "@tsoa/cli/*": ["../../packages/cli/src/*"],
-      "@tsoa/runtime/*": ["../../packages/runtime/src/*"]
+      "@tsoa-next/cli/*": ["../../packages/cli/src/*"],
+      "@tsoa-next/runtime/*": ["../../packages/runtime/src/*"]
     }
   },
   "references": [{ "path": "../../packages/runtime" }, { "path": "../../packages/cli" }]
