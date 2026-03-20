@@ -1,6 +1,6 @@
 import type { Token, InterfaceDeclaration, ClassDeclaration, PropertyDeclaration, ParameterDeclaration, ConstructorDeclaration, TypeElement, ClassElement, PropertySignature } from 'typescript'
 import { NodeFlags, NodeBuilderFlags, SyntaxKind, isInterfaceDeclaration, isPropertyDeclaration, isConstructorDeclaration, isPropertySignature } from 'typescript'
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 
 import { Transformer } from './transformer'
 import { GenerateMetadataError } from '../exceptions'

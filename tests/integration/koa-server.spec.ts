@@ -1,4 +1,4 @@
-import { File } from '@tsoa/runtime'
+import { File } from '@tsoa-next/runtime'
 import { expect } from 'chai'
 import { readFileSync } from 'fs'
 import 'mocha'

@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
-import { EnumTransformer } from '@tsoa/cli/metadataGeneration/transformer/enumTransformer'
-import { Tsoa } from '@tsoa/runtime'
+import { EnumTransformer } from '@tsoa-next/cli/metadataGeneration/transformer/enumTransformer'
+import { Tsoa } from '@tsoa-next/runtime'
 
 describe('EnumTransformer - Null Safety', () => {
   describe('merge method', () => {

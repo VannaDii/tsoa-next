@@ -1,5 +1,5 @@
 ///<reference path="../tsoaTestModule.d.ts" />
-import { Controller, Example, Get, OperationId, Queries, Query, Request, Res, Response, Route, SuccessResponse, Tags, TsoaResponse } from '@tsoa/runtime'
+import { Controller, Example, Get, OperationId, Queries, Query, Request, Res, Response, Route, SuccessResponse, Tags, TsoaResponse } from '@tsoa-next/runtime'
 import { Readable } from 'stream'
 import TsoaTest from 'tsoaTest'
 import '../duplicateTestModel'

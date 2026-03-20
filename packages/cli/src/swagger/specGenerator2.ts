@@ -1,5 +1,5 @@
 import { merge as deepMerge } from 'ts-deepmerge'
-import { Tsoa, assertNever, Swagger } from '@tsoa/runtime'
+import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 
 import { SpecGenerator } from './specGenerator'
 import { ExtendedSpecConfig } from '../cli'

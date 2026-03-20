@@ -1,4 +1,4 @@
-import { Swagger, Tsoa, assertNever } from '@tsoa/runtime'
+import { Swagger, Tsoa, assertNever } from '@tsoa-next/runtime'
 import { merge as deepMerge } from 'ts-deepmerge'
 
 import { ExtendedSpecConfig } from '../cli'

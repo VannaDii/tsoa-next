@@ -1,4 +1,4 @@
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import validator from 'validator'
 import { GenerateMetadataError } from './../metadataGeneration/exceptions'

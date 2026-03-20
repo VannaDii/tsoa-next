@@ -1,4 +1,4 @@
-import { Middlewares as GenericMiddlewares, Get, Route } from '@tsoa/runtime'
+import { Middlewares as GenericMiddlewares, Get, Route } from '@tsoa-next/runtime'
 
 import type { Request, ResponseToolkit, RouteOptionsPreAllOptions } from '@hapi/hapi'
 

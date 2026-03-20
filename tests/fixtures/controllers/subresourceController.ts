@@ -1,4 +1,4 @@
-import { Get, Path, Route } from '@tsoa/runtime'
+import { Get, Path, Route } from '@tsoa-next/runtime'
 
 @Route('SubResourceTest/{mainResourceId}/SubResource')
 export class SubResourceTestController {

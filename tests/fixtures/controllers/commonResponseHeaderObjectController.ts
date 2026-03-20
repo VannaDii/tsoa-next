@@ -1,4 +1,4 @@
-import { Controller, Get, Route, Response } from '@tsoa/runtime'
+import { Controller, Get, Route, Response } from '@tsoa-next/runtime'
 
 @Route('CommonResponseHeaderObject')
 @Response<

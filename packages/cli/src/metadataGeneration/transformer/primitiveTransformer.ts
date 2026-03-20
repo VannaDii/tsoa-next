@@ -1,5 +1,5 @@
 import { type TypeNode, SyntaxKind } from 'typescript'
-import { Tsoa, assertNever } from '@tsoa/runtime'
+import { Tsoa, assertNever } from '@tsoa-next/runtime'
 
 import { Transformer } from './transformer'
 

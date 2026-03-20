@@ -3,7 +3,7 @@ import { GenerateMetadataError } from './exceptions'
 import { MetadataGenerator } from './metadataGenerator'
 import { MethodGenerator } from './methodGenerator'
 import { TypeResolver } from './typeResolver'
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 import { getHeaderType } from '../utils/headerTypeHelpers'
 import {
   SymbolFlags,
@@ -174,7 +174,7 @@ export class ControllerGenerator {
       if (!moduleSpecifier) {
         return false
       }
-      return moduleSpecifier.getText().replace(/['"]/g, '') === '@tsoa/runtime'
+      return moduleSpecifier.getText().replace(/['"]/g, '') === '@tsoa-next/runtime'
     })
   }
 

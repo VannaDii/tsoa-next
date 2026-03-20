@@ -1,4 +1,4 @@
-import { Body, Post, Route } from '@tsoa/runtime'
+import { Body, Post, Route } from '@tsoa-next/runtime'
 
 // Models for testing validation error sizes
 

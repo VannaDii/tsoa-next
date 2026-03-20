@@ -1,4 +1,4 @@
-import { Controller, Get, Route, SuccessResponse, Response } from '@tsoa/runtime'
+import { Controller, Get, Route, SuccessResponse, Response } from '@tsoa-next/runtime'
 import { ErrorResponseModel, TestModel } from '../testModel'
 import { NonFactoryDecorator } from '../custom/non-factory-decorator'
 import { ModelService } from '../services/modelService'

@@ -1,4 +1,4 @@
-import { Controller, Middlewares as GenericMiddlewares, Get, Route } from '@tsoa/runtime'
+import { Controller, Middlewares as GenericMiddlewares, Get, Route } from '@tsoa-next/runtime'
 
 import type { NextFunction, Request, RequestHandler, Response } from 'express'
 

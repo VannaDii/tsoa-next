@@ -1,4 +1,4 @@
-import { Route, Controller, Get, Query } from '@tsoa/runtime'
+import { Route, Controller, Get, Query } from '@tsoa-next/runtime'
 
 /**
  * @isLong

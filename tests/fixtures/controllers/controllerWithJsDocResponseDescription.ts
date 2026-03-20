@@ -1,4 +1,4 @@
-import { Controller, Get, Route, SuccessResponse } from '@tsoa/runtime'
+import { Controller, Get, Route, SuccessResponse } from '@tsoa-next/runtime'
 import { TestModel } from '../testModel'
 import { ModelService } from 'fixtures/services/modelService'
 

@@ -1,8 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-import type { TsoaRoute } from '@tsoa/runtime';
-import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
+import type { TsoaRoute } from '@tsoa-next/runtime';
+import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { {{name}} } from '{{modulePath}}';
@@ -13,7 +13,7 @@ import { expressAuthentication } from '{{authenticationModule}}';
 {{/if}}
 {{#if iocModule}}
 import { iocContainer } from '{{iocModule}}';
-import type { IocContainer, IocContainerFactory } from '@tsoa/runtime';
+import type { IocContainer, IocContainerFactory } from '@tsoa-next/runtime';
 {{/if}}
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
 {{#if useFileUploads}}

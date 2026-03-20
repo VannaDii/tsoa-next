@@ -4,8 +4,8 @@
   "commit": false,
   "fixed": [
     [
-      "@tsoa/cli",
-      "@tsoa/runtime",
+      "@tsoa-next/cli",
+      "@tsoa-next/runtime",
       "tsoa-next"
     ]
   ],

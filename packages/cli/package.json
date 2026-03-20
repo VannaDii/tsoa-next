@@ -1,5 +1,5 @@
 {
-  "name": "@tsoa/cli",
+  "name": "@tsoa-next/cli",
   "version": "7.0.0",
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
   "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
-    "@tsoa/runtime": "7.0.0",
+    "@tsoa-next/runtime": "7.0.0",
     "@types/multer": "^2.1.0",
     "fs-extra": "^11.3.4",
     "glob": "^13.0.6",

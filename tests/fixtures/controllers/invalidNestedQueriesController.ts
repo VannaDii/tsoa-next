@@ -1,4 +1,4 @@
-import { Controller, Get, Route, Queries } from '@tsoa/runtime'
+import { Controller, Get, Route, Queries } from '@tsoa-next/runtime'
 import { ModelService } from '../services/modelService'
 
 @Route('Controller')

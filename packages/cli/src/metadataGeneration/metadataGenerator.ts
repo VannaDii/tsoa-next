@@ -1,4 +1,4 @@
-import { Config, Tsoa } from '@tsoa/runtime'
+import { Config, Tsoa } from '@tsoa-next/runtime'
 import { minimatch } from 'minimatch'
 import { createProgram, forEachChild, isClassDeclaration, type ClassDeclaration, type CompilerOptions, type Program, type TypeChecker } from 'typescript'
 import { getDecorators } from '../utils/decoratorUtils'

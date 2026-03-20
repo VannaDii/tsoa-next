@@ -1,4 +1,4 @@
-import { Get, Route, SuccessResponse } from '@tsoa/runtime'
+import { Get, Route, SuccessResponse } from '@tsoa-next/runtime'
 
 enum TEST_ENUM_CODES {
   ACCEPTED = 202,

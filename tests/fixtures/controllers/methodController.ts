@@ -1,4 +1,4 @@
-import { Controller, Extension, Options, Delete, Get, Patch, Post, Put, Response, Route, Security, SuccessResponse, Tags, Example } from '@tsoa/runtime'
+import { Controller, Extension, Options, Delete, Get, Patch, Post, Put, Response, Route, Security, SuccessResponse, Tags, Example } from '@tsoa-next/runtime'
 import { ModelService } from '../services/modelService'
 import { ErrorResponseModel, TestModel, TestModel as RenamedModel } from '../testModel'
 

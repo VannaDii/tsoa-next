@@ -1,2 +1,2 @@
-export * from '@tsoa/runtime'
-export * from '@tsoa/cli'
+export * from '@tsoa-next/runtime'
+export * from '@tsoa-next/cli'

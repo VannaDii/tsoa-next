@@ -1,6 +1,6 @@
 import type { Node, EnumDeclaration, EnumMember } from 'typescript'
 import { isEnumDeclaration, isEnumMember } from 'typescript'
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 
 import { Transformer } from './transformer'
 import { isExistJSDocTag } from '../../utils/jsDocUtils'

@@ -1,5 +1,5 @@
 import type { Node } from 'typescript'
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 
 import { Transformer } from './transformer'
 import { getJSDocTagNames } from '../../utils/jsDocUtils'

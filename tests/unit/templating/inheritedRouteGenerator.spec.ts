@@ -3,8 +3,8 @@ import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import 'mocha'
-import { generateRoutes } from '@tsoa/cli/module/generate-routes'
-import { MetadataGenerator } from '@tsoa/cli/metadataGeneration/metadataGenerator'
+import { generateRoutes } from '@tsoa-next/cli/module/generate-routes'
+import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { spy } from 'sinon'
 import * as ts from 'typescript'
 import { CompilerOptions } from 'typescript'
@@ -22,8 +22,8 @@ function getTempCompilerOptions(): CompilerOptions {
     experimentalDecorators: true,
     module: ts.ModuleKind.CommonJS,
     paths: {
-      '@tsoa/runtime': ['packages/runtime/src/index.ts'],
-      '@tsoa/runtime/*': ['packages/runtime/src/*'],
+      '@tsoa-next/runtime': ['packages/runtime/src/index.ts'],
+      '@tsoa-next/runtime/*': ['packages/runtime/src/*'],
     },
     target: ts.ScriptTarget.ES2021,
   }
@@ -63,7 +63,7 @@ async function readGeneratedRoutesFile(routesDir: string) {
 describe('RouteGenerator inherited routes', () => {
   it('emits routes declared on a base class and a child class', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       class BaseController extends Controller {
         @Get('from-base')
@@ -91,7 +91,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('uses the derived controller route prefix for inherited methods when base and derived routes differ', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       @Route('base')
       export class BaseController extends Controller {
@@ -123,7 +123,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('does not include inherited methods when the base class does not extend tsoa Controller', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       class PlainBase {
         @Get('from-base')
@@ -152,7 +152,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('rejects duplicate routes when inherited and child methods resolve to the same HTTP method and path', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       class BaseController extends Controller {
         @Get('duplicate')
@@ -179,7 +179,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('warns on duplicate path-parameter signatures between inherited and child methods', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       class BaseController extends Controller {
         @Get('{id}')
@@ -215,7 +215,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('rejects duplicate inherited route signatures across base and derived controllers with same route prefix', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       @Route('same')
       export class BaseController extends Controller {
@@ -243,7 +243,7 @@ describe('RouteGenerator inherited routes', () => {
 
   it('prefers child method decorators when the child overrides an inherited method name', async () => {
     const source = `
-      import { Controller, Get, Route } from '@tsoa/runtime';
+      import { Controller, Get, Route } from '@tsoa-next/runtime';
 
       class BaseController extends Controller {
         @Get('from-base')

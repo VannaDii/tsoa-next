@@ -1,4 +1,4 @@
-import { Body, Deprecated, File, FormField, Patch, Post, Query, Route, UploadedFile, UploadedFiles } from '@tsoa/runtime'
+import { Body, Deprecated, File, FormField, Patch, Post, Query, Route, UploadedFile, UploadedFiles } from '@tsoa-next/runtime'
 import { ModelService } from '../services/modelService'
 import { GenericRequest, TestClassModel, TestModel, TupleTestModel } from '../testModel31'
 

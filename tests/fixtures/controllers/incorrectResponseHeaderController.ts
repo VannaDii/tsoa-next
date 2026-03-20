@@ -1,4 +1,4 @@
-import { Controller, Get, Response, Route } from '@tsoa/runtime'
+import { Controller, Get, Response, Route } from '@tsoa-next/runtime'
 
 @Route('IncorrectResponseHeader')
 @Response<null, any>(200)

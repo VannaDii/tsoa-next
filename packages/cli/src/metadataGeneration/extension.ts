@@ -1,7 +1,7 @@
 import * as ts from 'typescript'
 import { getInitializerValue, isNonUndefinedInitializerValue } from './initializer-value'
 import { MetadataGenerator } from './metadataGenerator'
-import { Tsoa } from '@tsoa/runtime'
+import { Tsoa } from '@tsoa-next/runtime'
 import { safeFromJson } from '../utils/jsonUtils'
 
 export function getExtensions(decorators: ts.Identifier[], metadataGenerator: MetadataGenerator): Tsoa.Extension[] {

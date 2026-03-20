@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
-import { TsoaRoute, ValidateError, FieldErrors, ValidationService } from '@tsoa/runtime'
+import { TsoaRoute, ValidateError, FieldErrors, ValidationService } from '@tsoa-next/runtime'
 import { TypeAliasModel1, TypeAliasModel2 } from '../../fixtures/testModel'
 
 it('ValidateError should be an instanceof ValidateError', () => {

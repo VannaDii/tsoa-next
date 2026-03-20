@@ -1,4 +1,4 @@
-import { Body, Get, Post, Queries, Query, Route } from '@tsoa/runtime'
+import { Body, Get, Post, Queries, Query, Route } from '@tsoa-next/runtime'
 import { z } from 'zod'
 
 // Zod schemas for testing z.infer type resolution

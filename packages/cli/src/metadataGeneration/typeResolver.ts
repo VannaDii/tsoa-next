@@ -1,4 +1,4 @@
-import { assertNever, Tsoa } from '@tsoa/runtime'
+import { assertNever, Tsoa } from '@tsoa-next/runtime'
 import * as ts from 'typescript'
 import { safeFromJson } from '../utils/jsonUtils'
 import { getDecorators, getNodeFirstDecoratorValue, isDecorator } from './../utils/decoratorUtils'

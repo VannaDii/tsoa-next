@@ -2,7 +2,7 @@
 import YAML from 'yaml'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
-import { Config, RoutesConfig, SpecConfig, Tsoa } from '@tsoa/runtime'
+import { Config, RoutesConfig, SpecConfig, Tsoa } from '@tsoa-next/runtime'
 import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'

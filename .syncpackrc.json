@@ -56,8 +56,8 @@
     {
       "label": "workspace package dependencies stay exact",
       "dependencies": [
-        "@tsoa/cli",
-        "@tsoa/runtime"
+        "@tsoa-next/cli",
+        "@tsoa-next/runtime"
       ],
       "range": ""
     },

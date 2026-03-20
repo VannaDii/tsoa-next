@@ -1,4 +1,4 @@
-import { Controller, Get, Route } from '@tsoa/runtime'
+import { Controller, Get, Route } from '@tsoa-next/runtime'
 import { ModelService } from '../services/modelService'
 import { TestModel as TestModelRenamed } from '../testModel'
 

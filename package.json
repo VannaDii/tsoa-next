@@ -54,7 +54,7 @@
     "typedoc": "^0.28.17"
   },
   "overrides": {
-    "@tsoa/runtime": {
+    "@tsoa-next/runtime": {
       "@types/koa": "2.15.0"
     },
     "@types/koa": "2.15.0",

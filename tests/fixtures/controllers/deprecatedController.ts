@@ -1,4 +1,4 @@
-import { Controller, Get, Route, Deprecated } from '@tsoa/runtime'
+import { Controller, Get, Route, Deprecated } from '@tsoa-next/runtime'
 import { TestModel } from '../../fixtures/testModel'
 import { ModelService } from '../services/modelService'
 

@@ -1,4 +1,4 @@
-import { Controller, Options, Route } from '@tsoa/runtime'
+import { Controller, Options, Route } from '@tsoa-next/runtime'
 
 @Route('OptionsTest')
 export class OptionsTestController extends Controller {
