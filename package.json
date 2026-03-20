@@ -4,6 +4,7 @@
   "description": "Build swagger-compliant REST APIs using TypeScript and Node",
   "scripts": {
     "build": "turbo run build --output-logs=full",
+    "changeset": "changeset",
     "clean": "turbo run clean --output-logs=full",
     "fix:deps": "syncpack fix && syncpack format",
     "lint": "npm run lint:deps && eslint .",
@@ -12,10 +13,12 @@
     "prepare": "npm run build",
     "prettier": "node --experimental-strip-types ./node_modules/prettier/bin/prettier.cjs",
     "preversion": "npm run test",
+    "release": "npm run build && changeset publish",
     "syncpack": "syncpack",
     "test": "turbo run test --concurrency=1 --output-logs=full",
     "turbo": "turbo",
     "typedocs": "typedoc --options ./typedoc.json",
+    "version-packages": "changeset version && npm run fix:deps && npm install --ignore-scripts",
     "watch": "turbo run watch --parallel --output-logs=full"
   },
   "keywords": [
@@ -34,6 +37,7 @@
   "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
     "@typescript-eslint/eslint-plugin": "^8.57.1",

@@ -1,21 +1,25 @@
-name: Publish packages
+name: Publish Release
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+    types:
+      - closed
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
   packages: write
+  pull-requests: write
 
 jobs:
   publish:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && github.event.pull_request.title == 'Version Packages' && startsWith(github.event.pull_request.head.ref, 'changeset-release/')
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v6.3.0
@@ -23,15 +27,21 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build workspace packages
-        run: npm run build
+      - name: Publish packages to npm
+        id: changesets
+        uses: changesets/action@v1.7.0
+        with:
+          publish: npm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Prepare GitHub Packages package
+        if: steps.changesets.outputs.published == 'true'
         id: github-package
         run: |
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
@@ -45,15 +55,8 @@ jobs:
 
           echo "dir=${publish_dir}" >> "$GITHUB_OUTPUT"
 
-      - name: Publish npm package
-        uses: JS-DevTools/npm-publish@v4.1.5
-        with:
-          access: public
-          package: ./packages/tsoa
-          provenance: true
-          token: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish GitHub package
+        if: steps.changesets.outputs.published == 'true'
         uses: JS-DevTools/npm-publish@v4.1.5
         with:
           package: ${{ steps.github-package.outputs.dir }}
