@@ -5,7 +5,19 @@ import { MethodGenerator } from './methodGenerator';
 import { TypeResolver } from './typeResolver';
 import { Tsoa } from '@tsoa/runtime';
 import { getHeaderType } from '../utils/headerTypeHelpers';
-import { isMethodDeclaration, type ClassDeclaration, type CallExpression, type StringLiteral } from 'typescript';
+import {
+  SymbolFlags,
+  SyntaxKind,
+  isImportSpecifier,
+  isClassDeclaration,
+  isIdentifier,
+  isMethodDeclaration,
+  type ExpressionWithTypeArguments,
+  type ClassDeclaration,
+  type MethodDeclaration,
+  type CallExpression,
+  type StringLiteral,
+} from 'typescript';
 
 export class ControllerGenerator {
   private readonly path?: string;
@@ -15,7 +27,11 @@ export class ControllerGenerator {
   private readonly commonResponses: Tsoa.Response[];
   private readonly produces?: string[];
 
-  constructor(private readonly node: ClassDeclaration, private readonly current: MetadataGenerator, private readonly parentSecurity: Tsoa.Security[] = []) {
+  constructor(
+    private readonly node: ClassDeclaration,
+    private readonly current: MetadataGenerator,
+    private readonly parentSecurity: Tsoa.Security[] = [],
+  ) {
     this.path = this.getPath();
     this.tags = this.getTags();
     this.security = this.getSecurity();
@@ -48,11 +64,131 @@ export class ControllerGenerator {
   }
 
   private buildMethods() {
-    return this.node.members
-      .filter(isMethodDeclaration)
+    return this.getMethodsWithInheritedMethods()
       .map(m => new MethodGenerator(m, this.current, this.commonResponses, this.path, this.tags, this.security, this.isHidden))
       .filter(generator => generator.IsValid())
       .map(generator => generator.Generate());
+  }
+
+  private getMethodsWithInheritedMethods(): MethodDeclaration[] {
+    const inheritanceChain = this.getInheritanceChainForRoutes();
+    if (inheritanceChain.length === 1) {
+      return this.node.members.filter(isMethodDeclaration);
+    }
+
+    // Process from base to derived so derived classes can override inherited names.
+    const methodsByName = new Map<string, MethodDeclaration>();
+    inheritanceChain.reverse().forEach(classDeclaration => {
+      classDeclaration.members.filter(isMethodDeclaration).forEach(method => {
+        const key = this.getMethodKey(method);
+        if (!key) {
+          return;
+        }
+        methodsByName.set(key, method);
+      });
+    });
+
+    return [...methodsByName.values()];
+  }
+
+  private getInheritanceChainForRoutes(): ClassDeclaration[] {
+    const chain: ClassDeclaration[] = [this.node];
+    let hasRuntimeControllerBase = false;
+    let currentClass: ClassDeclaration | undefined = this.node;
+
+    while (currentClass) {
+      const { baseClass, extendsRuntimeController } = this.getDirectBaseClassInfo(currentClass);
+      if (extendsRuntimeController) {
+        hasRuntimeControllerBase = true;
+        break;
+      }
+
+      if (!baseClass) {
+        break;
+      }
+
+      chain.push(baseClass);
+      currentClass = baseClass;
+    }
+
+    return hasRuntimeControllerBase ? chain : [this.node];
+  }
+
+  private getDirectBaseClassInfo(classDeclaration: ClassDeclaration): { baseClass?: ClassDeclaration; extendsRuntimeController: boolean } {
+    const extendsClause = classDeclaration.heritageClauses?.find(clause => clause.token === SyntaxKind.ExtendsKeyword);
+    const extendsType = extendsClause?.types[0];
+    if (!extendsType) {
+      return { extendsRuntimeController: false };
+    }
+
+    if (this.extendsRuntimeController(extendsType)) {
+      return { extendsRuntimeController: true };
+    }
+
+    const expression = extendsType.expression;
+    const symbols = [this.current.typeChecker.getSymbolAtLocation(expression), this.current.typeChecker.getTypeAtLocation(expression).getSymbol()].filter(
+      (symbol): symbol is NonNullable<typeof symbol> => !!symbol,
+    );
+
+    const symbolsToSearch = new Set(symbols);
+    symbols.forEach(symbol => {
+      if (symbol.flags & SymbolFlags.Alias) {
+        symbolsToSearch.add(this.current.typeChecker.getAliasedSymbol(symbol));
+      }
+    });
+
+    for (const symbol of symbolsToSearch) {
+      const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : []);
+      const classDeclarationNode = declarations.find(isClassDeclaration);
+      if (classDeclarationNode) {
+        return { baseClass: classDeclarationNode, extendsRuntimeController: false };
+      }
+    }
+
+    return { extendsRuntimeController: false };
+  }
+
+  private extendsRuntimeController(extendsType: ExpressionWithTypeArguments): boolean {
+    const expression = extendsType.expression;
+    const symbol = this.current.typeChecker.getSymbolAtLocation(expression) || this.current.typeChecker.getTypeAtLocation(expression).getSymbol();
+    if (!symbol) {
+      return false;
+    }
+
+    if (!(symbol.flags & SymbolFlags.Alias)) {
+      return false;
+    }
+
+    const aliasDeclarations = symbol.declarations || [];
+    return aliasDeclarations.some(declaration => {
+      if (!isImportSpecifier(declaration)) {
+        return false;
+      }
+
+      const importedName = declaration.propertyName?.text || declaration.name.text;
+      if (importedName !== 'Controller') {
+        return false;
+      }
+
+      const moduleSpecifier = this.getImportModuleSpecifier(declaration);
+      if (!moduleSpecifier) {
+        return false;
+      }
+      return moduleSpecifier.getText().replace(/['"]/g, '') === '@tsoa/runtime';
+    });
+  }
+
+  private getMethodKey(method: MethodDeclaration): string | undefined {
+    if (!method.name) {
+      return undefined;
+    }
+    return isIdentifier(method.name) ? method.name.text : method.name.getText();
+  }
+
+  private getImportModuleSpecifier(declaration: import('typescript').ImportSpecifier) {
+    // ImportSpecifier -> NamedImports -> ImportClause -> ImportDeclaration
+    const importDeclaration = declaration.parent.parent.parent;
+    return 'moduleSpecifier' in importDeclaration ? importDeclaration.moduleSpecifier : undefined;
   }
 
   private getPath() {
