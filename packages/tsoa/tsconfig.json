@@ -4,6 +4,7 @@
     "rootDir": "src",
     "sourceMap": true,
     "module": "commonjs",
+    "types": ["node"],
     "composite": true,
     "target": "esnext",
     "lib": ["esnext"],

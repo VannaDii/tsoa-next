@@ -1,0 +1,75 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v6.3.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build packages
+        run: npm run build
+
+      - name: Build guides
+        run: npm run docs:build
+        env:
+          BASE_URL: /${{ github.event.repository.name }}/docs/
+          SITE_ROOT: /${{ github.event.repository.name }}/
+          API_REFERENCE_URL: /${{ github.event.repository.name }}/reference/
+
+      - name: Build API reference
+        run: npm run typedocs
+
+      - name: Assemble site artifact
+        run: |
+          rm -rf _site
+          mkdir -p _site/docs _site/reference _site/stylesheets
+          cp site/index.html _site/
+          cp -R site/stylesheets/. _site/stylesheets/
+          cp -R site/guide-docs/.vitepress/dist/. _site/docs/
+          cp -R .typedoc/. _site/reference/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://tsoa-community.github.io/docs/" target="blank">
+  <a href="https://vannadii.github.io/tsoa-next/" target="_blank" rel="noreferrer">
     <h1>tsoa-next</h1>
   </a>
 Pronounced so·uh
@@ -10,6 +10,12 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 [![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
 
 </div>
+
+## Project Lineage
+
+`tsoa-next` continues the original [`tsoa`](https://github.com/lukeautry/tsoa) project.
+The original repository and its contributors established the stable TypeScript-first and OpenAPI-first foundation this work builds on.
+Where historical release notes or migration references still point upstream, they are kept intentionally for provenance.
 
 ## Goal
 
@@ -36,22 +42,23 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 ## Getting Started
 
 - Requirements:
-  - Node.js 24.14 or newer
-  - npm 11 or newer
-- [Documentation](https://tsoa-community.github.io/docs/)
-- [API Reference](https://tsoa-community.github.io/reference/)
-- [Getting started guide](https://tsoa-community.github.io/docs/getting-started)
+  - Node.js 22 or newer
+  - npm 10 or newer
+  - We verify support across the previous LTS, current LTS, and Node vNext in CI
+- [Documentation](https://vannadii.github.io/tsoa-next/docs/)
+- [API Reference](https://vannadii.github.io/tsoa-next/reference/)
+- [Getting started guide](https://vannadii.github.io/tsoa-next/docs/getting-started)
 
 ## Examples
 
-Check out the [guides](https://tsoa-community.github.io/docs/getting-started)
+Check out the [guides](https://vannadii.github.io/tsoa-next/docs/)
 
-See example controllers in [the tests](tests/fixtures/controllers)
+See example controllers in [the tests](https://github.com/VannaDii/tsoa-next/tree/main/tests/fixtures/controllers)
 
-See example models in [the tests](tests/fixtures/testModel.ts)
+See example models in [the tests](https://github.com/VannaDii/tsoa-next/blob/main/tests/fixtures/testModel.ts)
 
 ## Help wanted
 
 ### Contributing code
 
-To contribute (via a PR), please first see the [Contributing Guide](https://github.com/vannadii/tsoa-next/tree/master/docs/CONTRIBUTING.md)
+To contribute (via a PR), please first see the [Contributing Guide](https://github.com/VannaDii/tsoa-next/blob/main/docs/CONTRIBUTING.md)
