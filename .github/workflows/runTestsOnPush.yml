@@ -1,7 +1,10 @@
-on: [push, pull_request]
 name: Build and Test
+
+on: [push, pull_request]
+
 permissions:
   contents: read
+
 jobs:
   build:
     name: Build
@@ -10,7 +13,7 @@ jobs:
       matrix:
         node-version: [22, 24, 25]
         os: [macos-latest, ubuntu-latest, windows-latest]
-        typescript-version: ['^5.0.0']
+        typescript-version: ["^5.0.0"]
 
     steps:
       - uses: actions/checkout@v6.0.2
