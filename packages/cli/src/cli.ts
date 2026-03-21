@@ -3,12 +3,13 @@ import YAML from 'yaml'
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
 import { Config, RoutesConfig, SpecConfig, Tsoa } from '@tsoa-next/runtime'
+import * as ts from 'typescript'
 import { MetadataGenerator } from './metadataGeneration/metadataGenerator'
 import { generateRoutes } from './module/generate-routes'
 import { generateSpec } from './module/generate-spec'
 import { fsExists, fsReadFile } from './utils/fs'
 import { AbstractRouteGenerator } from './routeGeneration/routeGenerator'
-import { extname, isAbsolute } from 'node:path'
+import { dirname, extname, isAbsolute, resolve } from 'node:path'
 import type { CompilerOptions } from 'typescript'
 
 const workingDir: string = process.cwd()
@@ -51,7 +52,12 @@ const isYamlExtension = (extension: string): boolean => extension === '.yaml' ||
 
 const isJsExtension = (extension: string): boolean => extension === '.js' || extension === '.cjs'
 
-const getConfig = async (configPath = 'tsoa.json'): Promise<Config> => {
+type ConfigWithContext = {
+  config: Config
+  configBaseDir: string
+}
+
+const getConfig = async (configPath = 'tsoa.json'): Promise<ConfigWithContext> => {
   let config: Config
   const ext = extname(configPath)
   const configFullPath = isAbsolute(configPath) ? configPath : `${workingDir}/${configPath}`
@@ -81,15 +87,73 @@ const getConfig = async (configPath = 'tsoa.json'): Promise<Config> => {
     }
   }
 
-  return config
+  return {
+    config,
+    configBaseDir: dirname(configFullPath),
+  }
 }
 
-const resolveConfig = async (config?: string | Config): Promise<Config> => {
-  return typeof config === 'object' ? config : getConfig(config)
+const resolveConfig = async (config?: string | Config): Promise<ConfigWithContext> => {
+  if (typeof config === 'object') {
+    return {
+      config,
+      configBaseDir: workingDir,
+    }
+  }
+
+  return getConfig(config)
 }
 
-const validateCompilerOptions = (config?: Record<string, unknown>): CompilerOptions => {
-  return (config || {}) as CompilerOptions
+const formatCompilerOptionsErrors = (context: string, errors: readonly ts.Diagnostic[]) => {
+  const message = errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, ts.sys.newLine)).join(ts.sys.newLine)
+  throw new Error(`${context}: ${message}`)
+}
+
+const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, configBaseDir: string, context: string): CompilerOptions => {
+  const parsed = ts.convertCompilerOptionsFromJson(compilerOptions, configBaseDir)
+
+  if (parsed.errors.length > 0) {
+    formatCompilerOptionsErrors(context, parsed.errors)
+  }
+
+  return parsed.options
+}
+
+const loadTsConfigCompilerOptions = (config: Config, configBaseDir: string): CompilerOptions => {
+  const configuredTsconfig = config.tsconfig
+  const resolvedTsconfigPath =
+    configuredTsconfig !== undefined
+      ? isAbsolute(configuredTsconfig)
+        ? configuredTsconfig
+        : resolve(configBaseDir, configuredTsconfig)
+      : ts.findConfigFile(configBaseDir, ts.sys.fileExists, 'tsconfig.json')
+
+  if (!resolvedTsconfigPath) {
+    return {}
+  }
+
+  const readResult = ts.readConfigFile(resolvedTsconfigPath, ts.sys.readFile)
+  if (readResult.error) {
+    formatCompilerOptionsErrors(`Failed to read tsconfig at '${resolvedTsconfigPath}'`, [readResult.error])
+  }
+
+  const parsed = ts.parseJsonConfigFileContent(readResult.config, ts.sys, dirname(resolvedTsconfigPath), undefined, resolvedTsconfigPath)
+  const relevantErrors = parsed.errors.filter(error => error.code !== 18003)
+  if (relevantErrors.length > 0) {
+    formatCompilerOptionsErrors(`Failed to resolve tsconfig at '${resolvedTsconfigPath}'`, relevantErrors)
+  }
+
+  return parsed.options
+}
+
+export const validateCompilerOptions = (config: Config, configBaseDir = workingDir): CompilerOptions => {
+  const tsconfigCompilerOptions = loadTsConfigCompilerOptions(config, configBaseDir)
+  const explicitCompilerOptions = config.compilerOptions ? parseCompilerOptionsObject(config.compilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config') : {}
+
+  return {
+    ...tsconfigCompilerOptions,
+    ...explicitCompilerOptions,
+  }
 }
 
 export interface ExtendedSpecConfig extends SpecConfig {
@@ -321,7 +385,7 @@ if (require.main === module) {
 
 async function SpecGenerator(args: SwaggerArgs) {
   try {
-    const config = await resolveConfig(args.configuration)
+    const { config, configBaseDir } = await resolveConfig(args.configuration)
     if (args.basePath) {
       config.spec.basePath = args.basePath
     }
@@ -335,7 +399,7 @@ async function SpecGenerator(args: SwaggerArgs) {
       config.spec.yaml = false
     }
 
-    const compilerOptions = validateCompilerOptions(config.compilerOptions)
+    const compilerOptions = validateCompilerOptions(config, configBaseDir)
     const swaggerConfig = await validateSpecConfig(config)
 
     await generateSpec(swaggerConfig, compilerOptions, config.ignore)
@@ -347,12 +411,12 @@ async function SpecGenerator(args: SwaggerArgs) {
 
 async function routeGenerator(args: ConfigArgs) {
   try {
-    const config = await resolveConfig(args.configuration)
+    const { config, configBaseDir } = await resolveConfig(args.configuration)
     if (args.basePath) {
       config.routes.basePath = args.basePath
     }
 
-    const compilerOptions = validateCompilerOptions(config.compilerOptions)
+    const compilerOptions = validateCompilerOptions(config, configBaseDir)
     const routesConfig = await validateRoutesConfig(config)
 
     await generateRoutes(routesConfig, compilerOptions, config.ignore)
@@ -364,7 +428,7 @@ async function routeGenerator(args: ConfigArgs) {
 
 export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.Metadata) {
   try {
-    const config = await resolveConfig(args.configuration)
+    const { config, configBaseDir } = await resolveConfig(args.configuration)
     if (args.basePath) {
       config.spec.basePath = args.basePath
     }
@@ -378,7 +442,7 @@ export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.M
       config.spec.yaml = false
     }
 
-    const compilerOptions = validateCompilerOptions(config.compilerOptions)
+    const compilerOptions = validateCompilerOptions(config, configBaseDir)
     const routesConfig = await validateRoutesConfig(config)
     const swaggerConfig = await validateSpecConfig(config)
 
