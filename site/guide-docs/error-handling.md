@@ -65,11 +65,7 @@ In order to handle missing urls more gracefully, we can add a "catch-all" route 
 
 ```ts
 // app.ts
-import express, {
-  Response as ExResponse,
-  Request as ExRequest,
-  NextFunction,
-} from "express";
+import express, { Response as ExResponse, Request as ExRequest, NextFunction } from 'express'
 
 // ...
 
@@ -77,10 +73,9 @@ RegisterRoutes(app)
 
 app.use(function notFoundHandler(_req, res: ExResponse) {
   res.status(404).send({
-    message: "Not Found",
-  });
-});
-
+    message: 'Not Found',
+  })
+})
 
 app.use(function errorHandler(
 // ...
@@ -93,7 +88,7 @@ Since TypeScript does not check throwing Errors, tsoa can't infer the type of re
 
 ::: warning
 Please note that `@Response` has to be the tsoa import and can not currently be renamed
-(i.e. `import {Response as TsoaResponse} from "tsoa-next"`)
+(i.e. `import { Response as TsoaResponse } from 'tsoa-next'`)
 :::
 
 However, we have a way for you to manually specify these returns:
@@ -104,7 +99,7 @@ import { User } from './user'
 import { UsersService, UserCreationParams } from './usersService'
 
 interface ValidateErrorJSON {
-  message: 'Validation failed'
+  message: string
   details: { [name: string]: unknown }
 }
 
@@ -134,7 +129,7 @@ OpenAPI allows matching status codes such as '2xx' or matching all codes using '
 @Response<ErrorResponse>('default', 'Unexpected error')
 @Get('Response')
 public async getResponse(): Promise<TestModel> {
-  return new ModelService().getModel();
+  return new ModelService().getModel()
 }
 ```
 
@@ -161,9 +156,9 @@ export class GreetingsController extends Controller {
   @Get('/')
   public async greet(@Query() name?: string, @Res() notFoundResponse: TsoaResponse<404, { reason: string }>): Promise<string> {
     if (!name) {
-      return notFoundResponse(404, { reason: "We don't know you yet. Please provide a name" });
+      return notFoundResponse(404, { reason: "We don't know you yet. Please provide a name" })
     }
 
-    return `Hello, ${name}`;
+    return `Hello, ${name}`
   }
 ```

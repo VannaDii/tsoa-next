@@ -6,26 +6,17 @@
     {
       "label": "build",
       "group": "build",
-      "args": [
-        "run",
-        "build"
-      ]
+      "args": ["run", "build"]
     },
     {
       "label": "test",
       "group": "test",
-      "args": [
-        "run",
-        "test"
-      ]
+      "args": ["run", "test"]
     },
     {
       "label": "prepareFiles",
       "group": "none",
-      "args": [
-        "run",
-        "pretest"
-      ],
+      "args": ["run", "pretest"],
       "options": {
         "cwd": "${workspaceFolder}/tests"
       }
@@ -33,10 +24,7 @@
     {
       "label": "watch",
       "group": "build",
-      "args": [
-        "run",
-        "watch"
-      ]
+      "args": ["run", "watch"]
     }
   ]
 }

@@ -79,7 +79,7 @@ npm i swagger-ui-express
 npm i -D @types/swagger-ui-express
 ```
 
-### Exposing a `/doc` endpoint
+### Exposing a `/docs` endpoint
 
 Below the body-parser, let's add another handler **before the call to `RegisterRoutes(app)`**
 

@@ -86,9 +86,8 @@ import multer from 'multer'
 export class FilesController {
   @Post('uploadFile')
   public async uploadFile(@Request() request: KoaRequest): Promise<any> {
-    const multer = multer().single('file')
-    await multer(request.ctx, async () => null)
-    const multerSingle = multer().single('randomFileIsHere')
+    const uploadSingle = multer().single('randomFileIsHere')
+    await uploadSingle(request.ctx, async () => null)
     // file will be in request.randomFileIsHere, it is a buffer
     return {}
   }
