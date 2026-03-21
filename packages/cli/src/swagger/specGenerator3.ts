@@ -5,7 +5,6 @@ import { ExtendedSpecConfig } from '../cli'
 import { isVoidType } from '../utils/isVoidType'
 import { recursiveMerge } from '../utils/specMerge'
 import { UnspecifiedObject } from '../utils/unspecifiedObject'
-import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 import { convertColonPathParams, normalisePath } from './../utils/pathUtils'
 import { DEFAULT_REQUEST_MEDIA_TYPE, DEFAULT_RESPONSE_MEDIA_TYPE, getValue } from './../utils/swaggerUtils'
 import { SpecGenerator } from './specGenerator'
@@ -214,14 +213,7 @@ export class SpecGenerator3 extends SpecGenerator {
       } else if (referenceType.dataType === 'refAlias') {
         const swaggerType = this.getSwaggerType(referenceType.type)
         const format = referenceType.format as Swagger.DataFormat
-        const validators = Object.keys(referenceType.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .reduce((acc, key) => {
-            return {
-              ...acc,
-              [key]: referenceType.validators[key]!.value,
-            }
-          }, {})
+        const validators = this.getSchemaValidators(referenceType.validators) as Partial<Swagger.Schema3>
 
         schema[referenceType.refName] = {
           ...(swaggerType as Swagger.Schema3),
@@ -448,14 +440,7 @@ export class SpecGenerator3 extends SpecGenerator {
   }
 
   protected buildMediaType(controllerName: string, method: Tsoa.Method, parameter: Tsoa.Parameter): Swagger.MediaType {
-    const validators = Object.keys(parameter.validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .reduce((acc, key) => {
-        return {
-          ...acc,
-          [key]: parameter.validators[key]!.value,
-        }
-      }, {})
+    const validators = this.getSchemaValidators(parameter.validators) as Partial<Swagger.Schema3>
 
     const mediaType: Swagger.MediaType = {
       schema: {
@@ -516,12 +501,7 @@ export class SpecGenerator3 extends SpecGenerator {
       return Object.assign(parameter, this.buildExamples(source))
     }
 
-    const validatorObjs: { [key in Tsoa.SchemaValidatorKey]?: unknown } = {}
-    Object.keys(source.validators)
-      .filter(shouldIncludeValidatorInSchema)
-      .forEach(key => {
-        validatorObjs[key] = source.validators[key]!.value
-      })
+    const validatorObjs = this.getSchemaValidators(source.validators) as Partial<Swagger.Schema3>
 
     if (source.type.dataType === 'any') {
       parameter.schema.type = 'string'
@@ -578,11 +558,7 @@ export class SpecGenerator3 extends SpecGenerator {
       if (!swaggerType.$ref) {
         swaggerType.default = property.default
 
-        Object.keys(property.validators)
-          .filter(shouldIncludeValidatorInSchema)
-          .forEach(key => {
-            swaggerType = { ...swaggerType, [key]: property.validators[key]!.value }
-          })
+        swaggerType = { ...swaggerType, ...(this.getSchemaValidators(property.validators) as Partial<Swagger.Schema3>) }
       }
       if (property.deprecated) {
         swaggerType.deprecated = true
@@ -725,5 +701,9 @@ export class SpecGenerator3 extends SpecGenerator {
       const valuesDelimited = Array.from(types).join(',')
       throw new Error(`Enums can only have string or number values, but enum had ${valuesDelimited}`)
     }
+  }
+
+  protected transformSchemaValidators(validators: Partial<Record<Tsoa.SchemaValidatorKey, unknown>>): Partial<Record<Tsoa.SchemaValidatorKey, unknown>> {
+    return this.transformExclusiveNumericValidatorsForLegacySpec(validators)
   }
 }

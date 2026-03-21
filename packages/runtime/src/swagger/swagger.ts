@@ -137,6 +137,8 @@ export namespace Swagger {
     description?: string
     deprecated?: boolean
     [ext: `x-${string}`]: unknown
+    exclusiveMaximum?: boolean
+    exclusiveMinimum?: boolean
   } & Pick<BaseSchema, 'type' | 'items' | 'enum' | 'format' | 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern'>
 
   export type BodyParameter = BaseParameter & {
@@ -339,9 +341,7 @@ export namespace Swagger {
     default?: string | boolean | number | unknown
     multipleOf?: number
     maximum?: number
-    exclusiveMaximum?: number
     minimum?: number
-    exclusiveMinimum?: number
     maxLength?: number
     minLength?: number
     pattern?: string
@@ -368,8 +368,10 @@ export namespace Swagger {
     items?: BaseSchema
   }
 
-  export interface Schema31 extends Omit<Schema3, 'items' | 'properties' | 'additionalProperties' | 'discriminator' | 'anyOf' | 'allOf'> {
+  export interface Schema31 extends Omit<Schema3, 'items' | 'properties' | 'additionalProperties' | 'discriminator' | 'anyOf' | 'allOf' | 'exclusiveMaximum' | 'exclusiveMinimum'> {
     examples?: unknown[]
+    exclusiveMaximum?: number
+    exclusiveMinimum?: number
 
     properties?: { [key: string]: Schema31 }
     additionalProperties?: boolean | Schema31
@@ -396,11 +398,15 @@ export namespace Swagger {
     anyOf?: BaseSchema[]
     allOf?: BaseSchema[]
     deprecated?: boolean
+    exclusiveMaximum?: boolean
+    exclusiveMinimum?: boolean
     properties?: { [propertyName: string]: Schema3 }
   }
 
   export interface Schema2 extends BaseSchema {
     type?: DataType
+    exclusiveMaximum?: boolean
+    exclusiveMinimum?: boolean
     properties?: { [propertyName: string]: Schema2 }
     ['x-nullable']?: boolean
     ['x-deprecated']?: boolean
