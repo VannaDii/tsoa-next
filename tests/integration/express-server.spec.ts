@@ -363,6 +363,53 @@ describe('Express Server', () => {
     })
   })
 
+  it('treats an absent optional body as undefined', () => {
+    return verifyRequest(
+      app,
+      (_err, res) => {
+        expect(res.body).to.deep.equal({ state: 'undefined', body: null })
+      },
+      request => request.post(basePath + '/EmptyBody/optional'),
+      200,
+    )
+  })
+
+  it('keeps an explicit empty object body distinct from an absent body', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', {}, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: {} })
+    })
+  })
+
+  it('preserves non-empty body payloads', () => {
+    return verifyPostRequest(app, basePath + '/EmptyBody/optional', { value: 'present' }, (_err, res) => {
+      expect(res.body).to.deep.equal({ state: 'defined', body: { value: 'present' } })
+    })
+  })
+
+  it('fails validation for a missing required body', () => {
+    return verifyRequest(
+      app,
+      (err, _res) => {
+        const body = JSON.parse(err.text)
+        expect(body.fields.body.message).to.equal(`'body' is required`)
+      },
+      request => request.post(basePath + '/EmptyBody/required'),
+      400,
+    )
+  })
+
+  it('still errors on malformed json', () => {
+    return verifyRequest(
+      app,
+      (err, _res) => {
+        const body = JSON.parse(err.text)
+        expect(body.status).to.equal(400)
+      },
+      request => request.post(basePath + '/EmptyBody/optional').set('Content-Type', 'application/json').send('{"value":'),
+      400,
+    )
+  })
+
   it('correctly handles OPTIONS requests', () => {
     const path = basePath + '/OptionsTest/Current'
     return verifyRequest(

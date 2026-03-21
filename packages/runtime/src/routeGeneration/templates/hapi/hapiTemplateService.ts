@@ -95,14 +95,16 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
           return this.validationService.ValidateParam(param, request.headers[name], name, errorFields, false, undefined)
         case 'body': {
           const bodyFieldErrors: FieldErrors = {}
-          const result = this.validationService.ValidateParam(param, request.payload, name, bodyFieldErrors, true, undefined)
+          const normalizedBody = this.normalizeRequestBody(request.payload, request.headers)
+          const result = this.validationService.ValidateParam(param, normalizedBody, name, bodyFieldErrors, true, undefined)
           Object.keys(bodyFieldErrors).forEach(key => {
             errorFields[key] = { message: bodyFieldErrors[key].message }
           })
           return result
         }
         case 'body-prop': {
-          const descriptor = Object.getOwnPropertyDescriptor(request.payload, name)
+          const normalizedBody = this.normalizeRequestBody(request.payload, request.headers) as Record<string, unknown> | undefined
+          const descriptor = normalizedBody ? Object.getOwnPropertyDescriptor(normalizedBody, name) : undefined
           const value = descriptor ? descriptor.value : undefined
           const bodyFieldErrors: FieldErrors = {}
           const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.')
