@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="UTF-8" />
+    <title>tsoa-next</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="OpenAPI-compliant REST APIs using TypeScript and Node" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,700" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen" />
+  </head>
+  <body>
+    <section class="page-header">
+      <h1 class="project-name">tsoa-next</h1>
+      <h2 class="project-tagline">OpenAPI-compliant REST APIs using TypeScript and Node</h2>
+      <a href="https://github.com/VannaDii/tsoa-next" class="btn">View on GitHub</a>
+      <a href="docs/" class="btn">Documentation</a>
+      <a href="reference/" class="btn">API Reference</a>
+      <a href="docs/getting-started" class="btn">Getting Started</a>
+    </section>
+
+    <section class="main-content">
+      <p>
+        <a href="https://github.com/VannaDii/tsoa-next/actions/workflows/runTestsOnPush.yml"
+          ><img src="https://github.com/VannaDii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg" alt="Build and Test status"
+        /></a>
+        <a href="https://www.npmjs.com/package/tsoa-next"><img src="https://img.shields.io/npm/v/tsoa-next/latest" alt="npm version" /></a>
+      </p>
+
+      <h2>Goal</h2>
+
+      <ul>
+        <li>TypeScript controllers and models as the single source of truth for your API</li>
+        <li>
+          A valid OpenAPI (formerly Swagger) spec is generated from your controllers and models, including:
+          <ul>
+            <li>Paths such as <code>GET /users</code></li>
+            <li>Definitions based on TypeScript interfaces and classes</li>
+            <li>Required and optional fields inferred directly from TypeScript</li>
+            <li>JSDoc support for descriptions and other text metadata</li>
+          </ul>
+        </li>
+        <li>Routes are generated for your middleware of choice with request validation built in</li>
+      </ul>
+
+      <h2>What&apos;s Here</h2>
+
+      <ul>
+        <li><a href="reference/">API Reference</a> generated from the packages in this repository</li>
+        <li>
+          <a href="docs/">Guides and tutorials</a>
+          hosted from this repository
+        </li>
+        <li><a href="https://github.com/VannaDii/tsoa-next/tree/main/docs">Repository docs</a> for contribution and project context</li>
+      </ul>
+
+      <h2>Getting Started</h2>
+
+      <pre><code>npm install tsoa-next reflect-metadata</code></pre>
+
+      <p>The published package includes the CLI entrypoint as <code>tsoa</code>, plus the <code>@tsoa-next/runtime</code> and <code>@tsoa-next/cli</code> packages used internally by the monorepo.</p>
+
+      <div class="highlight highlight-source-ts">
+        <pre><code><span class="pl-k">import</span> { <span class="pl-en">Controller</span>, <span class="pl-en">Get</span>, <span class="pl-en">Route</span> } <span class="pl-k">from</span> <span class="pl-s">'tsoa-next'</span>;
+
+@<span class="pl-en">Route</span>(<span class="pl-s">'users'</span>)
+<span class="pl-k">export</span> <span class="pl-k">class</span> <span class="pl-en">UsersController</span> <span class="pl-k">extends</span> <span class="pl-en">Controller</span> {
+  @<span class="pl-en">Get</span>(<span class="pl-s">'{id}'</span>)
+  <span class="pl-k">public</span> <span class="pl-k">async</span> <span class="pl-en">getUser</span>(<span class="pl-v">id</span>: <span class="pl-c1">number</span>) {
+    <span class="pl-k">return</span> { <span class="pl-smi">id</span> };
+  }
+}</code></pre>
+      </div>
+
+      <pre><code>tsoa spec
+tsoa routes</code></pre>
+
+      <h2>Current Documentation Layout</h2>
+
+      <ul>
+        <li>
+          <strong>Landing page:</strong>
+          <a href="./">Site home</a>
+        </li>
+        <li>
+          <strong>API reference:</strong>
+          <a href="reference/">Reference docs</a>
+        </li>
+        <li>
+          <strong>Guides:</strong>
+          <a href="docs/getting-started">Getting started guide</a>
+        </li>
+      </ul>
+
+      <footer class="site-footer">
+        <span class="site-footer-owner"><a href="https://github.com/VannaDii/tsoa-next">tsoa-next</a> is maintained by <a href="https://github.com/VannaDii">VannaDii</a>.</span>
+        <span class="site-footer-credits">This site is published from the <code>main</code> branch via GitHub Actions.</span>
+      </footer>
+    </section>
+  </body>
+</html>

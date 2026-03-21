@@ -1,3 +1,7 @@
 This package contains the runtime helpers for tsoa.
 
-For a comprehensive Readme, please refer to [the main readme](https://github.com/lukeautry/tsoa#readme).
+For the main README and API reference, see:
+
+- [Repository README](https://github.com/VannaDii/tsoa-next#readme)
+- [Project documentation](https://vannadii.github.io/tsoa-next/docs/)
+- [API reference](https://vannadii.github.io/tsoa-next/reference/)

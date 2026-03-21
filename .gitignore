@@ -12,3 +12,5 @@ tsconfig.tsbuildinfo
 codealike.json
 .turbo
 **/.turbo
+site/guide-docs/.vitepress/.temp
+site/guide-docs/.vitepress/dist
