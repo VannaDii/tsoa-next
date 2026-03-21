@@ -8,6 +8,10 @@ on:
     types:
       - opened
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   issues: write
   pull-requests: write
@@ -22,7 +26,7 @@ jobs:
           issue-message: |
             Hello there ${{ github.actor }} 👋
 
-            Thank you for opening your very first issue in this project. 
+            Thank you for opening your very first issue in this project.
 
             We will try to get back to you as soon as we can.👀
 
