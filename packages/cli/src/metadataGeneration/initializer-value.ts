@@ -3,11 +3,14 @@ import { Tsoa } from '@tsoa-next/runtime'
 
 const hasInitializer = (node: ts.Node): node is ts.HasInitializer => Object.prototype.hasOwnProperty.call(node, 'initializer')
 const extractInitializer = (decl?: ts.Declaration) => (decl && hasInitializer(decl) && (decl.initializer as ts.Expression)) || undefined
-const extractImportSpecifier = (symbol?: ts.Symbol) => (symbol?.declarations && symbol.declarations.length > 0 && ts.isImportSpecifier(symbol.declarations[0]) && symbol.declarations[0]) || undefined
-const isIterable = (obj: any): obj is Iterable<any> => obj != null && typeof obj[Symbol.iterator] === 'function'
+const extractImportSpecifier = (symbol?: ts.Symbol): ts.ImportSpecifier | undefined =>
+  symbol?.declarations && symbol.declarations.length > 0 && ts.isImportSpecifier(symbol.declarations[0]) ? symbol.declarations[0] : undefined
+const isIterable = (obj: unknown): obj is Iterable<unknown> => obj != null && typeof (obj as Iterable<unknown>)[Symbol.iterator] === 'function'
 
-export type InitializerValue = string | number | boolean | undefined | null | InitializerValue[]
-export type DefinedInitializerValue = string | number | boolean | null | DefinedInitializerValue[]
+export type InitializerObjectValue = { [key: string]: InitializerValue }
+export type DefinedInitializerObjectValue = { [key: string]: DefinedInitializerValue }
+export type InitializerValue = string | number | boolean | undefined | null | InitializerValue[] | InitializerObjectValue
+export type DefinedInitializerValue = string | number | boolean | null | DefinedInitializerValue[] | DefinedInitializerObjectValue
 export function isNonUndefinedInitializerValue(value: InitializerValue): value is DefinedInitializerValue {
   if (Array.isArray(value)) {
     return value.every(isNonUndefinedInitializerValue)
@@ -63,15 +66,15 @@ export function getInitializerValue(initializer?: ts.Expression | ts.ImportSpeci
       const newExpression = initializer as ts.NewExpression
       const ident = newExpression.expression as ts.Identifier
 
-      if (ident.text === 'Date') {
-        let date = new Date()
-        if (newExpression.arguments) {
+        if (ident.text === 'Date') {
+          let date = new Date()
+          if (newExpression.arguments) {
           const newArguments = newExpression.arguments.filter(args => args.kind !== undefined)
           const argsValue = newArguments.map(args => getInitializerValue(args, typeChecker))
           if (argsValue.length > 0) {
-            date = new Date(argsValue as any)
+            date = new Date(argsValue as unknown as ConstructorParameters<DateConstructor>[0])
           }
-        }
+          }
         const dateString = date.toISOString()
         if (type && type.dataType === 'date') {
           return dateString.split('T')[0]
@@ -84,19 +87,24 @@ export function getInitializerValue(initializer?: ts.Expression | ts.ImportSpeci
       return null
     case ts.SyntaxKind.ObjectLiteralExpression: {
       const objectLiteral = initializer as ts.ObjectLiteralExpression
-      const nestedObject: any = {}
-      objectLiteral.properties.forEach((p: any) => {
+      const nestedObject: InitializerObjectValue = {}
+      objectLiteral.properties.forEach(p => {
         if (ts.isSpreadAssignment(p)) {
           const spreadValue = getInitializerValue(p.expression, typeChecker)
           if (spreadValue) {
-            if (typeof spreadValue === 'object') {
+            if (typeof spreadValue === 'object' && !Array.isArray(spreadValue)) {
               Object.assign(nestedObject, spreadValue)
             } else {
               throw new Error(`Spread types may only be created from object types.`)
             }
           }
+        } else if (ts.isPropertyAssignment(p)) {
+          nestedObject[p.name.getText()] = getInitializerValue(p.initializer, typeChecker)
+        } else if (ts.isShorthandPropertyAssignment(p)) {
+          const shorthandSymbol = typeChecker.getShorthandAssignmentValueSymbol(p)
+          nestedObject[p.name.getText()] = getInitializerValue(extractInitializer(shorthandSymbol?.valueDeclaration) || extractImportSpecifier(shorthandSymbol), typeChecker)
         } else {
-          nestedObject[p.name.text] = getInitializerValue(p.initializer, typeChecker)
+          throw new Error(`Unsupported object literal property kind: ${ts.SyntaxKind[p.kind]}`)
         }
       })
       return nestedObject

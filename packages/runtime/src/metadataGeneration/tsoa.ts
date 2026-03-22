@@ -63,7 +63,7 @@ export namespace Tsoa {
     collectionFormat?: 'csv' | 'multi' | 'pipes' | 'ssv' | 'tsv'
   }
 
-  type AllKeys<T> = T extends any ? keyof T : never
+  type AllKeys<T> = T extends unknown ? keyof T : never
 
   export type ValidatorKey = AllKeys<Validator>
   export type SchemaValidatorKey = Exclude<ValidatorKey, `is${string}` | 'minDate' | 'maxDate'>

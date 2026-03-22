@@ -15,7 +15,13 @@ export abstract class SpecGenerator {
 
   protected buildOperationIdTemplate(inlineTemplate: string) {
     handlebars.registerHelper('titleCase', (value: string) => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value))
-    handlebars.registerHelper('replace', (subject: string, searchValue: string, withValue = '') => (subject ? subject.replace(searchValue, withValue) : subject))
+    handlebars.registerHelper('replace', (...args: unknown[]) => {
+      const [subject, searchValue, withValue] = args
+      const normalizedSubject = typeof subject === 'string' ? subject : ''
+      const normalizedSearchValue = typeof searchValue === 'string' || searchValue instanceof RegExp ? searchValue : ''
+      const normalizedWithValue = typeof withValue === 'string' ? withValue : ''
+      return normalizedSubject ? normalizedSubject.replace(normalizedSearchValue, normalizedWithValue) : normalizedSubject
+    })
     return handlebars.compile(inlineTemplate, { noEscape: true })
   }
 
@@ -220,9 +226,10 @@ export abstract class SpecGenerator {
   }
 
   protected queriesPropertyToQueryParameter(property: Tsoa.Property): Tsoa.Parameter {
+    const example = property.example
     return {
       parameterName: property.name,
-      example: [property.example as any],
+      example: example === undefined ? undefined : [example as { [exampleName: string]: Swagger.Example3 }],
       description: property.description,
       in: 'query',
       name: property.name,

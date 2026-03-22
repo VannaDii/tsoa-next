@@ -135,12 +135,12 @@ export class SpecGenerator3 extends SpecGenerator {
     return defs
   }
 
-  protected hasOAuthFlow(definition: any): definition is { flow: string } {
-    return !!definition.flow
+  protected hasOAuthFlow(definition: unknown): definition is { flow: string } {
+    return typeof definition === 'object' && definition !== null && 'flow' in definition && typeof definition.flow === 'string'
   }
 
-  protected hasOAuthFlows(definition: any): definition is { flows: Swagger.OAuthFlow } {
-    return !!definition.flows
+  protected hasOAuthFlows(definition: unknown): definition is { flows: Swagger.OAuthFlow } {
+    return typeof definition === 'object' && definition !== null && 'flows' in definition && typeof definition.flows === 'object' && definition.flows !== null
   }
 
   protected buildServers() {
@@ -259,8 +259,9 @@ export class SpecGenerator3 extends SpecGenerator {
     return paths
   }
 
-  protected buildMethod(controllerName: string, method: Tsoa.Method, pathObject: any, defaultProduces?: string[]) {
-    const pathMethod: Swagger.Operation3 = (pathObject[method.method] = this.buildOperation(controllerName, method, defaultProduces))
+  protected buildMethod(controllerName: string, method: Tsoa.Method, pathObject: Partial<Record<Tsoa.Method['method'], Swagger.Operation3>>, defaultProduces?: string[]) {
+    const pathMethod: Swagger.Operation3 = this.buildOperation(controllerName, method, defaultProduces)
+    pathObject[method.method] = pathMethod
     pathMethod.description = method.description
     pathMethod.summary = method.summary
     pathMethod.tags = method.tags
@@ -681,7 +682,7 @@ export class SpecGenerator3 extends SpecGenerator {
       for (const type of types) {
         typesSet.add(JSON.stringify(type))
       }
-      return Array.from(typesSet).map(typeString => JSON.parse(typeString))
+      return Array.from(typesSet).map(typeString => JSON.parse(typeString) as Swagger.BaseSchema)
     }
   }
 

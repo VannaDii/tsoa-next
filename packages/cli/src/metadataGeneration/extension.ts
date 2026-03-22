@@ -42,7 +42,7 @@ export function getExtensionsFromJSDocComments(comments: string[]): Tsoa.Extensi
   const extensions: Tsoa.Extension[] = []
   comments.forEach(comment => {
     const extensionData = safeFromJson(comment)
-    if (extensionData) {
+    if (isExtensionRecord(extensionData)) {
       const keys = Object.keys(extensionData)
       keys.forEach(key => {
         assertValidExtensionKey(key)
@@ -52,6 +52,34 @@ export function getExtensionsFromJSDocComments(comments: string[]): Tsoa.Extensi
   })
 
   return extensions
+}
+
+function isExtensionRecord(value: unknown): value is Record<string, Tsoa.Extension['value']> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+
+  return Object.values(value).every(isExtensionValue)
+}
+
+function isExtensionValue(value: unknown): value is Tsoa.Extension['value'] {
+  if (value === null) {
+    return true
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(isExtensionValue)
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).every(isExtensionValue)
+  }
+
+  return false
 }
 
 function assertValidExtensionKey(key: string): asserts key is `x-${string}` {
