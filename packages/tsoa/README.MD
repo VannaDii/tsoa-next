@@ -8,6 +8,7 @@ OpenAPI-compliant REST APIs using TypeScript and Node
 
 [![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml)
 [![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=VannaDii_tsoa-next&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=VannaDii_tsoa-next)
 
 </div>
 
