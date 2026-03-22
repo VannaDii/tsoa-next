@@ -19,6 +19,9 @@ const testConfig = (overrides: Partial<Config> = {}): Config => ({
   ...overrides,
 })
 
+const normalizePathForAssertion = (value: string) => value.replaceAll('\\', '/')
+const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
 describe('CompilerOptions', () => {
   let testDir: string
 
@@ -143,6 +146,8 @@ describe('CompilerOptions', () => {
   })
 
   it('throws for an explicitly configured missing tsconfig', () => {
+    const expectedPath = normalizePathForAssertion(join(testDir, 'missing.tsconfig.json'))
+
     expect(() =>
       validateCompilerOptions(
         testConfig({
@@ -150,13 +155,34 @@ describe('CompilerOptions', () => {
         }),
         testDir,
       ),
-    ).to.throw(`Failed to read tsconfig at '${join(testDir, 'missing.tsconfig.json')}'`)
+    ).to.throw()
+
+    try {
+      validateCompilerOptions(
+        testConfig({
+          tsconfig: './missing.tsconfig.json',
+        }),
+        testDir,
+      )
+      expect.fail('Expected validateCompilerOptions to throw for a missing tsconfig')
+    } catch (error) {
+      expect(normalizePathForAssertion(getErrorMessage(error))).to.contain(`Failed to read tsconfig at '${expectedPath}'`)
+    }
   })
 
   it('throws for invalid tsconfig json', async () => {
     await writeFile(join(testDir, 'tsconfig.json'), '{ "compilerOptions": ', 'utf8')
 
-    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to read tsconfig at '${join(testDir, 'tsconfig.json')}'`)
+    const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
+
+    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw()
+
+    try {
+      validateCompilerOptions(testConfig(), testDir)
+      expect.fail('Expected validateCompilerOptions to throw for invalid tsconfig JSON')
+    } catch (error) {
+      expect(normalizePathForAssertion(getErrorMessage(error))).to.contain(`Failed to read tsconfig at '${expectedPath}'`)
+    }
   })
 
   it('throws for broken tsconfig extends', async () => {
@@ -168,7 +194,16 @@ describe('CompilerOptions', () => {
       'utf8',
     )
 
-    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to resolve tsconfig at '${join(testDir, 'tsconfig.json')}'`)
+    const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
+
+    expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw()
+
+    try {
+      validateCompilerOptions(testConfig(), testDir)
+      expect.fail('Expected validateCompilerOptions to throw for broken tsconfig extends')
+    } catch (error) {
+      expect(normalizePathForAssertion(getErrorMessage(error))).to.contain(`Failed to resolve tsconfig at '${expectedPath}'`)
+    }
   })
 
   it('uses merged tsconfig path mapping during metadata generation', async () => {
