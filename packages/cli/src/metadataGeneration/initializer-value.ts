@@ -6,14 +6,21 @@ const extractInitializer = (decl?: ts.Declaration) => (decl && hasInitializer(de
 const extractImportSpecifier = (symbol?: ts.Symbol): ts.ImportSpecifier | undefined =>
   symbol?.declarations && symbol.declarations.length > 0 && ts.isImportSpecifier(symbol.declarations[0]) ? symbol.declarations[0] : undefined
 const isIterable = (obj: unknown): obj is Iterable<unknown> => obj != null && typeof (obj as Iterable<unknown>)[Symbol.iterator] === 'function'
+const toSpreadableObject = (value: InitializerValue | DefinedInitializerValue): InitializerObjectValue =>
+  Object.entries(Object.assign({}, value)).reduce<InitializerObjectValue>((acc, [key, entryValue]) => {
+    acc[key] = entryValue as DefinedInitializerValue
+    return acc
+  }, {})
 
 export type InitializerObjectValue = { [key: string]: InitializerValue }
 export type DefinedInitializerObjectValue = { [key: string]: DefinedInitializerValue }
-export type InitializerValue = string | number | boolean | undefined | null | InitializerValue[] | InitializerObjectValue
-export type DefinedInitializerValue = string | number | boolean | null | DefinedInitializerValue[] | DefinedInitializerObjectValue
+export type InitializerValue = string | number | boolean | undefined | null | Date | InitializerValue[] | InitializerObjectValue
+export type DefinedInitializerValue = string | number | boolean | null | Date | DefinedInitializerValue[] | DefinedInitializerObjectValue
 export function isNonUndefinedInitializerValue(value: InitializerValue): value is DefinedInitializerValue {
   if (Array.isArray(value)) {
     return value.every(isNonUndefinedInitializerValue)
+  } else if (value instanceof Date) {
+    return true
   } else {
     return value !== undefined
   }
@@ -92,11 +99,7 @@ export function getInitializerValue(initializer?: ts.Expression | ts.ImportSpeci
         if (ts.isSpreadAssignment(p)) {
           const spreadValue = getInitializerValue(p.expression, typeChecker)
           if (spreadValue) {
-            if (typeof spreadValue === 'object' && !Array.isArray(spreadValue)) {
-              Object.assign(nestedObject, spreadValue)
-            } else {
-              throw new Error(`Spread types may only be created from object types.`)
-            }
+            Object.assign(nestedObject, toSpreadableObject(spreadValue))
           }
         } else if (ts.isPropertyAssignment(p)) {
           nestedObject[p.name.getText()] = getInitializerValue(p.initializer, typeChecker)

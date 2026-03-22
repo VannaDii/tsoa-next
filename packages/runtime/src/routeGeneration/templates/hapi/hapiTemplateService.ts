@@ -153,16 +153,15 @@ export class HapiTemplateService extends TemplateService<HapiApiHandlerParameter
     }
 
     const response = data !== null && data !== undefined ? h.response(data).code(200) : h.response().code(204)
+    const setHeader = response.header.bind(response)
 
     Object.keys(headers).forEach((name: string) => {
       const headerValue = headers[name]
       if (headerValue !== undefined) {
         if (Array.isArray(headerValue)) {
-          headerValue.forEach(value => {
-            response.header(name, value)
-          })
+          Reflect.apply(setHeader, response, [name, headerValue, { append: name === 'set-cookie' }])
         } else {
-          response.header(name, headerValue)
+          setHeader(name, headerValue)
         }
       }
     })

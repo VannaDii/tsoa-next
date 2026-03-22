@@ -159,6 +159,10 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
   }
 
   private isReadableStream(data: unknown): data is Readable {
-    return data instanceof Readable
+    if (!this.isRecord(data)) {
+      return false
+    }
+
+    return typeof data.pipe === 'function' && (data instanceof Readable || data.readable === true || typeof data._read === 'function')
   }
 }

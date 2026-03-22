@@ -14,11 +14,27 @@ import { getHeaderType } from '../utils/headerTypeHelpers'
 import type { InitializerValue } from './initializer-value'
 
 type HttpMethod = 'options' | 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head'
-type ResponseExample = NonNullable<Tsoa.Response['examples']>[number]
-
-const isResponseExample = (value: unknown): value is ResponseExample => typeof value === 'object' && value !== null && !Array.isArray(value)
-const toResponseExample = (value: unknown): ResponseExample | undefined => (isResponseExample(value) ? value : undefined)
 const toExampleLabel = (value: InitializerValue | undefined): string | undefined => (typeof value === 'string' ? value : undefined)
+const isResponseName = (value: InitializerValue | undefined): value is Tsoa.Response['name'] => typeof value === 'string' || typeof value === 'number'
+const isExampleValue = (value: InitializerValue | undefined, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  return Object.values(value).every(item => isExampleValue(item, true))
+}
 
 export class MethodGenerator {
   protected method?: HttpMethod
@@ -195,7 +211,7 @@ export class MethodGenerator {
   }
 
   private getMethodResponses(): Tsoa.Response[] {
-    const responseExamplesByName: Record<string, ResponseExample[]> = {}
+    const responseExamplesByName: Record<string, Tsoa.Example[]> = {}
     const decorators = this.getDecoratorsByIdentifier(this.node, 'Response')
     if (!decorators || !decorators.length) {
       return []
@@ -203,17 +219,18 @@ export class MethodGenerator {
 
     return decorators.map(decorator => {
       const [name, description, example, produces] = getDecoratorValues(decorator, this.current.typeChecker)
-      const responseName = typeof name === 'string' ? name : '200'
+      const responseName = isResponseName(name) ? name : '200'
       const responseDescription = typeof description === 'string' ? description : ''
 
-      const responseExample = toResponseExample(example)
-      if (responseExample !== undefined && typeof name === 'string') {
-        responseExamplesByName[responseName] = responseExamplesByName[responseName] ? [...responseExamplesByName[responseName], responseExample] : [responseExample]
+      if (isExampleValue(example) && isResponseName(name)) {
+        const responseKey = String(responseName)
+        const currentExamples = responseExamplesByName[responseKey] ?? []
+        responseExamplesByName[responseKey] = [...currentExamples, example]
       }
 
       return {
         description: responseDescription,
-        examples: responseExamplesByName[responseName] || undefined,
+        examples: responseExamplesByName[String(responseName)] || undefined,
         name: responseName,
         produces: this.getProducesAdapter(this.getProducesValue(produces)),
         schema: this.getSchemaFromDecorator(decorator, 0),
@@ -231,7 +248,7 @@ export class MethodGenerator {
       return {
         response: {
           description: isVoidType(type) ? 'No content' : returnsDescription,
-          examples: examplesWithLabels?.map(ex => ex.example),
+          examples: examplesWithLabels ? examplesWithLabels.map(ex => ex.example) : undefined,
           exampleLabels: examplesWithLabels?.map(ex => ex.label),
           name: isVoidType(type) ? '204' : '200',
           produces: this.produces,
@@ -246,20 +263,20 @@ export class MethodGenerator {
     const [firstDecorator] = decorators
     const [name, description, produces] = getDecoratorValues(firstDecorator, this.current.typeChecker)
     const headers = this.getHeadersFromDecorator(firstDecorator, 0)
-    const responseName = typeof name === 'string' ? name : '200'
+    const responseName = isResponseName(name) ? name : '200'
     const responseDescription = typeof description === 'string' ? description : ''
 
     return {
       response: {
         description: responseDescription,
-        examples: examplesWithLabels?.map(ex => ex.example),
+        examples: examplesWithLabels ? examplesWithLabels.map(ex => ex.example) : undefined,
         exampleLabels: examplesWithLabels?.map(ex => ex.label),
         name: responseName,
         produces: this.getProducesAdapter(this.getProducesValue(produces)),
         schema: type,
         headers,
       },
-      status: typeof name === 'string' && /^\d+$/.test(name) ? parseInt(name, 10) : undefined,
+      status: typeof name === 'number' ? name : typeof name === 'string' && /^\d+$/.test(name) ? parseInt(name, 10) : undefined,
     }
   }
 
@@ -285,8 +302,8 @@ export class MethodGenerator {
 
     const examples = exampleDecorators.map(exampleDecorator => {
       const [example, label] = getDecoratorValues(exampleDecorator, this.current.typeChecker)
-      return { example: toResponseExample(example), label: toExampleLabel(label) }
-    }).filter((entry): entry is { example: ResponseExample; label: string | undefined } => entry.example !== undefined)
+      return { example, label: toExampleLabel(label) }
+    }).filter((entry): entry is { example: Tsoa.Example; label: string | undefined } => isExampleValue(entry.example))
 
     return examples || undefined
   }

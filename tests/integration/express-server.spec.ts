@@ -290,6 +290,13 @@ describe('Express Server', () => {
     })
   })
 
+  it('returns stream-like responses across module boundaries', () => {
+    return verifyGetRequest(app, `${basePath}/GetTest/HandleStreamLikeType`, (_err, res) => {
+      expect(res.text).to.equal('testbuffer')
+      return
+    })
+  })
+
   it('should reject invalid additionalProperties', () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 

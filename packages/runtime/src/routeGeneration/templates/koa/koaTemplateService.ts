@@ -51,7 +51,11 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
     } catch (error: unknown) {
       const status = this.getErrorStatus(error) ?? 500
       context.status = status
-      context.throw(this.getErrorMessage(error), status, this.getErrorProperties(error))
+      const properties = this.getErrorProperties(error)
+      if (properties) {
+        context.throw(status, this.getErrorMessage(error), properties)
+      }
+      context.throw(status, this.getErrorMessage(error))
     }
   }
 

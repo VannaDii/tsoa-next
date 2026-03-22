@@ -3,6 +3,30 @@ import { Tsoa, assertNever, Swagger } from '@tsoa-next/runtime'
 import * as handlebars from 'handlebars'
 import { shouldIncludeValidatorInSchema } from '../utils/validatorUtils'
 
+const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).every(item => isExampleValue(item, true))
+  }
+
+  return false
+}
+
 export abstract class SpecGenerator {
   constructor(
     protected readonly metadata: Tsoa.Metadata,
@@ -18,9 +42,13 @@ export abstract class SpecGenerator {
     handlebars.registerHelper('replace', (...args: unknown[]) => {
       const [subject, searchValue, withValue] = args
       const normalizedSubject = typeof subject === 'string' ? subject : ''
-      const normalizedSearchValue = typeof searchValue === 'string' || searchValue instanceof RegExp ? searchValue : ''
+      const isValidSearchValue = typeof searchValue === 'string' || searchValue instanceof RegExp
       const normalizedWithValue = typeof withValue === 'string' ? withValue : ''
-      return normalizedSubject ? normalizedSubject.replace(normalizedSearchValue, normalizedWithValue) : normalizedSubject
+      if (!normalizedSubject || !isValidSearchValue) {
+        return normalizedSubject
+      }
+
+      return normalizedSubject.replace(searchValue, normalizedWithValue)
     })
     return handlebars.compile(inlineTemplate, { noEscape: true })
   }
@@ -229,7 +257,7 @@ export abstract class SpecGenerator {
     const example = property.example
     return {
       parameterName: property.name,
-      example: example === undefined ? undefined : [example as { [exampleName: string]: Swagger.Example3 }],
+      example: isExampleValue(example) ? [example] : undefined,
       description: property.description,
       in: 'query',
       name: property.name,

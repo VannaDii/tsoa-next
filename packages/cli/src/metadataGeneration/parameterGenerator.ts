@@ -10,10 +10,31 @@ import { TypeResolver } from './typeResolver'
 import { getHeaderType } from '../utils/headerTypeHelpers'
 import type { InitializerValue } from './initializer-value'
 
-type ParameterExample = NonNullable<Tsoa.Parameter['example']>[number]
-const isParameterExample = (value: unknown): value is ParameterExample => typeof value === 'object' && value !== null && !Array.isArray(value)
-const toParameterExamples = (values: unknown[] | undefined): ParameterExample[] | undefined => values?.filter(isParameterExample)
 const getDecoratorStringValue = (value: InitializerValue | undefined, fallback: string): string => (typeof value === 'string' ? value : fallback)
+const isExampleValue = (value: unknown, allowUndefined = false): value is Tsoa.Example => {
+  if (value === null || value instanceof Date) {
+    return true
+  }
+
+  if (value === undefined) {
+    return allowUndefined
+  }
+
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true
+  }
+
+  if (Array.isArray(value)) {
+    return value.every(item => isExampleValue(item, true))
+  }
+
+  if (typeof value === 'object') {
+    return Object.values(value).every(item => isExampleValue(item, true))
+  }
+
+  return false
+}
+const toParameterExamples = (values: unknown[] | undefined): Tsoa.Example[] | undefined => values?.filter(value => isExampleValue(value))
 
 export class ParameterGenerator {
   constructor(

@@ -358,13 +358,16 @@ export class SpecGenerator3 extends SpecGenerator {
 
         if (res.examples) {
           let exampleCounter = 1
-          const examples = res.examples.reduce((acc, ex, currentIndex) => {
+          const examples = res.examples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
             const exampleLabel = res.exampleLabels?.[currentIndex]
-            return { ...acc, [exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel]: { value: ex } }
+            acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+            return acc
           }, {})
-          for (const p of produces) {
-             
-            ;(swaggerResponses[res.name].content || {})[p]['examples'] = examples
+          const content = swaggerResponses[res.name].content
+          if (content) {
+            for (const p of produces) {
+              content[p].examples = examples
+            }
           }
         }
       }
@@ -463,9 +466,10 @@ export class SpecGenerator3 extends SpecGenerator {
       mediaType.example = parameterExamples[0]
     } else {
       let exampleCounter = 1
-      mediaType.examples = parameterExamples.reduce((acc, ex, currentIndex) => {
+      mediaType.examples = parameterExamples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
         const exampleLabel = parameterExampleLabels?.[currentIndex]
-        return { ...acc, [exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel]: { value: ex } }
+        acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+        return acc
       }, {})
     }
 
@@ -540,7 +544,7 @@ export class SpecGenerator3 extends SpecGenerator {
     }
 
     let exampleCounter = 1
-    const examples = parameterExamples.reduce(
+    const examples = parameterExamples.reduce<Record<string, Swagger.Example3>>(
       (acc, ex, idx) => {
         const label = exampleLabels?.[idx]
         const name = label ?? `Example ${exampleCounter++}`

@@ -6,6 +6,16 @@ import { TsoaRoute, isDefaultForAdditionalPropertiesAllowed } from './tsoa-route
 import ValidatorKey = Tsoa.ValidatorKey
 
 // for backwards compatibility with custom templates
+export function ValidateParam<TValue>(
+  property: TsoaRoute.PropertySchema,
+  value: TValue,
+  generatedModels: TsoaRoute.Models,
+  name: string | undefined,
+  fieldErrors: FieldErrors,
+  isBodyParam: boolean,
+  parent: string | undefined,
+  config: AdditionalProps,
+): TValue
 export function ValidateParam(
   property: TsoaRoute.PropertySchema,
   value: unknown,
@@ -15,7 +25,7 @@ export function ValidateParam(
   isBodyParam: boolean,
   parent = '',
   config: AdditionalProps,
-) {
+): unknown {
   return new ValidationService(generatedModels, config).ValidateParam(property, value, name, fieldErrors, isBodyParam, parent)
 }
 
@@ -31,6 +41,7 @@ export class ValidationService {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
   }
 
+  public ValidateParam<TValue>(property: TsoaRoute.PropertySchema, rawValue: TValue, name: string | undefined, fieldErrors: FieldErrors, isBodyParam: boolean, parent?: string): TValue
   public ValidateParam(property: TsoaRoute.PropertySchema, rawValue: unknown, name = '', fieldErrors: FieldErrors, isBodyParam: boolean, parent = ''): unknown {
     let value = rawValue
     // If undefined is allowed type, we can move to value validation
@@ -502,10 +513,12 @@ export class ValidationService {
     const previousErrors = Object.keys(fieldErrors).length
     if (Array.isArray(value)) {
       arrayValue = value.map((elementValue, index) => {
-        return this.ValidateParam(schema, elementValue, `$${index}`, fieldErrors, isBodyParam, name + '.')
+        const validatedElement: unknown = this.ValidateParam(schema, elementValue, `$${index}`, fieldErrors, isBodyParam, name + '.')
+        return validatedElement
       })
     } else {
-      arrayValue = [this.ValidateParam(schema, value, '$0', fieldErrors, isBodyParam, name + '.')]
+      const validatedElement: unknown = this.ValidateParam(schema, value, '$0', fieldErrors, isBodyParam, name + '.')
+      arrayValue = [validatedElement]
     }
 
     if (Object.keys(fieldErrors).length > previousErrors) {
@@ -553,6 +566,7 @@ export class ValidationService {
     return Buffer.from(String(value))
   }
 
+  public validateUnion<TValue>(name: string, value: TValue, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent?: string): TValue
   public validateUnion(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, property: TsoaRoute.PropertySchema, parent = ''): unknown {
     if (!property.subSchemas) {
       throw new Error(
@@ -582,6 +596,7 @@ export class ValidationService {
     return
   }
 
+  public validateIntersection<TValue>(name: string, value: TValue, fieldErrors: FieldErrors, isBodyParam: boolean, subSchemas: TsoaRoute.PropertySchema[] | undefined, parent?: string): TValue
   public validateIntersection(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, subSchemas: TsoaRoute.PropertySchema[] | undefined, parent = ''): unknown {
     if (!subSchemas) {
       throw new Error(
@@ -755,6 +770,7 @@ export class ValidationService {
     }
   }
 
+  public validateModel<TValue>(input: { name: string; value: TValue; modelDefinition: TsoaRoute.ModelSchema; fieldErrors: FieldErrors; isBodyParam: boolean; parent?: string }): TValue
   public validateModel(input: { name: string; value: unknown; modelDefinition: TsoaRoute.ModelSchema; fieldErrors: FieldErrors; isBodyParam: boolean; parent?: string }): unknown {
     const { name, value, modelDefinition, fieldErrors, isBodyParam, parent = '' } = input
     const previousErrors = Object.keys(fieldErrors).length

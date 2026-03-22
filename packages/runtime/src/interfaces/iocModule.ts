@@ -14,4 +14,6 @@ export interface IocContainer {
   get<T>(controller: ServiceIdentifier<T>): Promise<T>
 }
 
-export type IocContainerFactory<T = unknown> = (request: T) => IocContainer
+export type IocContainerFactory<T = unknown> = {
+  bivarianceHack(request: T): IocContainer
+}['bivarianceHack']

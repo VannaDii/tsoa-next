@@ -32,6 +32,9 @@ export function getExtensions(decorators: ts.Identifier[], metadataGenerator: Me
     if (!isNonUndefinedInitializerValue(attributeValue)) {
       throw new Error(`Extension '${attributeKey}' cannot have an undefined initializer value`)
     }
+    if (!isExtensionValue(attributeValue)) {
+      throw new Error(`Extension '${attributeKey}' must resolve to a valid OpenAPI extension value`)
+    }
     return { key: attributeKey, value: attributeValue }
   })
 
