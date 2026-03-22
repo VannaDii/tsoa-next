@@ -1,5 +1,11 @@
 # @tsoa-next/runtime
 
+## 7.2.1
+
+### Patch Changes
+
+- 255ffd4: Fixes reported security issues
+
 ## 7.2.0
 
 ### Minor Changes
