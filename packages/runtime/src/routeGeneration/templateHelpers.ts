@@ -171,7 +171,19 @@ export class ValidationService {
       return
     }
 
-    const result = validateExternalSchema(runtimeMetadata.kind, runtimeMetadata.schema, value, this.config.validation)
+    const declaredKind = property.externalValidator?.kind
+    const runtimeKind = runtimeMetadata.kind
+
+    if (declaredKind && declaredKind !== runtimeKind) {
+      fieldErrors[parent + name] = {
+        message: `External validator kind mismatch for '${parent + name}'. Route schema expects '${declaredKind}' but runtime metadata provided '${runtimeKind}'.`,
+        value,
+      }
+      return
+    }
+
+    const kindToUse = declaredKind || runtimeKind
+    const result = validateExternalSchema(kindToUse, runtimeMetadata.schema, value, this.config.validation)
     if (result.ok) {
       return result.value
     }
@@ -185,8 +197,17 @@ export class ValidationService {
       return undefined
     }
 
-    const controllerPrototype = 'prototype' in metadata.controllerClass ? ((metadata.controllerClass as { prototype?: object }).prototype || metadata.controllerClass) : metadata.controllerClass
-    return getParameterExternalValidatorMetadata(controllerPrototype, metadata.methodName, metadata.parameterIndex)
+    const controllerTarget = metadata.controllerClass as object & { prototype?: object }
+    const candidateTargets = controllerTarget.prototype ? [controllerTarget.prototype, controllerTarget] : [controllerTarget]
+
+    for (const target of candidateTargets) {
+      const runtimeMetadata = getParameterExternalValidatorMetadata(target, metadata.methodName, metadata.parameterIndex)
+      if (runtimeMetadata) {
+        return runtimeMetadata
+      }
+    }
+
+    return undefined
   }
 
   private projectExternalFailureToFieldErrors(

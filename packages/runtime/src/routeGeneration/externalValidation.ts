@@ -19,6 +19,8 @@ type ValidationErrorLike = Error & { issues?: unknown[]; details?: unknown[]; in
 type SuperstructModule = { validate: (value: unknown, struct: unknown, options?: unknown) => [unknown, unknown] }
 type IoTsReporterModule = { PathReporter?: { report: (input: unknown) => string[] } }
 
+let superstructModule: SuperstructModule | undefined
+
 function loadOptionalModule<T>(moduleName: string): T {
   try {
     return require(moduleName) as T
@@ -178,7 +180,7 @@ const yupAdapter: RuntimeSchemaAdapter = {
 const superstructAdapter: RuntimeSchemaAdapter = {
   kind: 'superstruct',
   validate(value, schema, context) {
-    const { validate } = loadOptionalModule<SuperstructModule>('superstruct')
+    const { validate } = superstructModule ?? (superstructModule = loadOptionalModule<SuperstructModule>('superstruct'))
     const [error, result] = validate(value, schema)
 
     if (!error) {

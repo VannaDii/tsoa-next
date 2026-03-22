@@ -26,6 +26,7 @@ describe('External validation metadata', function () {
     const cases = [
       ['zod', 'zod'],
       ['joi', 'joi'],
+      ['joiInferred', 'joi'],
       ['yup', 'yup'],
       ['superstruct', 'superstruct'],
       ['ioTs', 'io-ts'],
@@ -109,5 +110,13 @@ describe('External validation metadata', function () {
     expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateRequestParamController.ts').Generate()).to.throw(
       "@Validate is not supported on 'request' parameters in this release.",
     )
+  })
+
+  it('infers validator kinds for namespace-imported schemas used in bare @Validate(schema) form', () => {
+    const parameter = getMethod('joiInferred').parameters[0]
+    expect(parameter.externalValidator).to.deep.equal({
+      kind: 'joi',
+      strategy: 'external',
+    })
   })
 })

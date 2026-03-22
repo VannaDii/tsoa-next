@@ -42,18 +42,13 @@ function getValidateDecorator(parameter: ts.ParameterDeclaration, typeChecker: t
 }
 
 function getModuleKindFromImportDeclaration(declaration: ts.Declaration): Tsoa.ExternalValidatorKind | undefined {
-  if (ts.isImportSpecifier(declaration)) {
-    const importDeclaration = declaration.parent.parent.parent
-    if (ts.isImportDeclaration(importDeclaration) && ts.isStringLiteral(importDeclaration.moduleSpecifier)) {
-      return VALIDATOR_MODULE_KIND_MAP[importDeclaration.moduleSpecifier.text]
-    }
+  let current: ts.Node | undefined = declaration.parent
+  while (current && !ts.isImportDeclaration(current)) {
+    current = current.parent
   }
 
-  if (ts.isNamespaceImport(declaration) || ts.isImportClause(declaration)) {
-    const importDeclaration = declaration.parent.parent
-    if (ts.isImportDeclaration(importDeclaration) && ts.isStringLiteral(importDeclaration.moduleSpecifier)) {
-      return VALIDATOR_MODULE_KIND_MAP[importDeclaration.moduleSpecifier.text]
-    }
+  if (current && ts.isImportDeclaration(current) && ts.isStringLiteral(current.moduleSpecifier)) {
+    return VALIDATOR_MODULE_KIND_MAP[current.moduleSpecifier.text]
   }
 
   return undefined
@@ -161,8 +156,11 @@ function parseValidateKindAndSchemaArgument(
         property => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'kind',
       ) as ts.PropertyAssignment | undefined
       const schemaProperty = arg.properties.find(
-        property => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'schema',
-      ) as ts.PropertyAssignment | undefined
+        property =>
+          (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
+          ts.isIdentifier(property.name) &&
+          property.name.text === 'schema',
+      ) as ts.PropertyAssignment | ts.ShorthandPropertyAssignment | undefined
 
       if (!kindProperty || !schemaProperty || !ts.isStringLiteral(kindProperty.initializer) || !isExternalValidatorKind(kindProperty.initializer.text)) {
         throw new GenerateMetadataError('@Validate({ kind, schema }) requires a supported string kind and a schema property.', arg)

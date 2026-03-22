@@ -194,4 +194,61 @@ describe('External validation runtime', () => {
 
     expect(fieldErrors.payload.message).to.equal('translated:validation.external.zod.authoritative.min')
   })
+
+  it('fails clearly when generated route metadata and runtime validator metadata disagree on validator kind', () => {
+    class ExternalController {
+      public submit(@Validate('zod', ZodAuthoritativeSchema) payload: string) {
+        return payload
+      }
+    }
+
+    const service = new ValidationService({}, validationConfig)
+    const fieldErrors: Record<string, { message: string; value: unknown }> = {}
+    const schema: TsoaRoute.PropertySchema = {
+      dataType: 'string',
+      required: true,
+      validationStrategy: 'external',
+      externalValidator: {
+        kind: 'yup',
+        strategy: 'external',
+      },
+    }
+
+    service.ValidateParam(schema, 'ok', 'payload', fieldErrors, true, '', {
+      controllerClass: ExternalController,
+      methodName: 'submit',
+      parameterIndex: 0,
+    })
+
+    expect(fieldErrors.payload.message).to.contain("Route schema expects 'yup' but runtime metadata provided 'zod'")
+  })
+
+  it('finds runtime external validator metadata for static controller methods', () => {
+    class StaticExternalController {
+      public static submit(@Validate(ZodAuthoritativeSchema) payload: string) {
+        return payload
+      }
+    }
+
+    const service = new ValidationService({}, validationConfig)
+    const fieldErrors = {}
+    const schema: TsoaRoute.PropertySchema = {
+      dataType: 'double',
+      required: true,
+      validationStrategy: 'external',
+      externalValidator: {
+        kind: 'zod',
+        strategy: 'external',
+      },
+    }
+
+    const result = service.ValidateParam(schema, '42', 'payload', fieldErrors, true, '', {
+      controllerClass: StaticExternalController,
+      methodName: 'submit',
+      parameterIndex: 0,
+    })
+
+    expect(result).to.equal('42')
+    expect(fieldErrors).to.deep.equal({})
+  })
 })

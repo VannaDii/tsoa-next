@@ -91,9 +91,11 @@ export class TypeResolver {
     }
 
     if (ts.isIntersectionTypeNode(this.typeNode)) {
-      const types = this.typeNode.types.map(type => {
-        return new TypeResolver(type, this.current, this.parentNode, this.context).resolve()
-      })
+      const types = this.typeNode.types
+        .filter(type => !this.isIoTsBrandMarker(type, this.current.typeChecker))
+        .map(type => {
+          return new TypeResolver(type, this.current, this.parentNode, this.context).resolve()
+        })
 
       const intersectionMetaType: Tsoa.IntersectionType = {
         dataType: 'intersection',
@@ -509,10 +511,10 @@ export class TypeResolver {
   private resolveTypeReferenceNode(typeNode: ts.TypeReferenceNode, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type {
     const { typeName, typeArguments } = typeNode
 
-    const typeNameText = ts.isIdentifier(typeName) ? typeName.text : typeName.right.text
     const resolvedTypeArguments = typeArguments ? [...typeArguments] : undefined
+    const ioTsUtilityType = this.getIoTsUtilityType(typeName, current.typeChecker)
 
-    if (typeNameText === 'TypeOf' && resolvedTypeArguments && resolvedTypeArguments.length === 1) {
+    if (ioTsUtilityType === 'TypeOf' && resolvedTypeArguments && resolvedTypeArguments.length === 1) {
       const [codecTypeArgument] = resolvedTypeArguments
       const codecType = current.typeChecker.getTypeFromTypeNode(codecTypeArgument)
       const decodedSymbol = current.typeChecker.getPropertyOfType(codecType, '_A')
@@ -531,9 +533,13 @@ export class TypeResolver {
       }
     }
 
-    if (typeNameText === 'Branded' && resolvedTypeArguments && resolvedTypeArguments.length >= 1) {
+    if (ioTsUtilityType === 'Branded' && resolvedTypeArguments && resolvedTypeArguments.length >= 1) {
       const [valueTypeArgument] = resolvedTypeArguments
       return new TypeResolver(valueTypeArgument, current, parentNode, context).resolve()
+    }
+
+    if (ioTsUtilityType === 'Brand') {
+      return { dataType: 'any' }
     }
 
     if (typeName.kind !== ts.SyntaxKind.Identifier) {
@@ -568,6 +574,105 @@ export class TypeResolver {
     }
 
     return this.getReferenceType(typeNode)
+  }
+
+  private isIoTsBrandMarker(typeNode: ts.TypeNode, typeChecker: ts.TypeChecker): boolean {
+    return ts.isTypeReferenceNode(typeNode) && this.getIoTsUtilityType(typeNode.typeName, typeChecker) === 'Brand'
+  }
+
+  private getIoTsUtilityType(typeName: ts.EntityName, typeChecker: ts.TypeChecker): 'TypeOf' | 'Branded' | 'Brand' | undefined {
+    const symbolNode = ts.isQualifiedName(typeName) ? typeName.right : typeName
+    const symbolName = symbolNode.text
+    if (symbolName !== 'TypeOf' && symbolName !== 'Branded' && symbolName !== 'Brand') {
+      return undefined
+    }
+
+    if (ts.isQualifiedName(typeName) && this.entityNameComesFromModule(typeName.left, typeChecker, 'io-ts')) {
+      return symbolName
+    }
+
+    const symbol = typeChecker.getSymbolAtLocation(symbolNode)
+    if (!symbol) {
+      return symbolName
+    }
+
+    return this.getIoTsUtilityTypeFromSymbol(symbol, typeChecker)
+  }
+
+  private entityNameComesFromModule(
+    entityName: ts.EntityName,
+    typeChecker: ts.TypeChecker,
+    moduleName: string,
+  ): boolean {
+    const symbolNode = ts.isQualifiedName(entityName) ? entityName.right : entityName
+    const symbol = typeChecker.getSymbolAtLocation(symbolNode)
+    return !!symbol && this.symbolComesFromModule(symbol, typeChecker, moduleName)
+  }
+
+  private getIoTsUtilityTypeFromSymbol(
+    symbol: ts.Symbol | undefined,
+    typeChecker: ts.TypeChecker,
+    visited: Set<ts.Symbol> = new Set(),
+  ): 'TypeOf' | 'Branded' | 'Brand' | undefined {
+    if (!symbol || visited.has(symbol)) {
+      return undefined
+    }
+
+    visited.add(symbol)
+
+    if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+      const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
+      const aliasedType = this.getIoTsUtilityTypeFromSymbol(aliasedSymbol, typeChecker, visited)
+      if (aliasedType) {
+        return aliasedType
+      }
+    }
+
+    const symbolName = symbol.getName()
+    if ((symbolName === 'TypeOf' || symbolName === 'Branded' || symbolName === 'Brand') && this.symbolComesFromModule(symbol, typeChecker, 'io-ts')) {
+      return symbolName
+    }
+
+    return undefined
+  }
+
+  private symbolComesFromModule(
+    symbol: ts.Symbol,
+    typeChecker: ts.TypeChecker,
+    moduleName: string,
+    visited: Set<ts.Symbol> = new Set(),
+  ): boolean {
+    if (visited.has(symbol)) {
+      return false
+    }
+
+    visited.add(symbol)
+
+    const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
+    for (const declaration of declarations) {
+      let current: ts.Node | undefined = declaration.parent
+      while (current && !ts.isImportDeclaration(current)) {
+        current = current.parent
+      }
+
+      if (current && ts.isImportDeclaration(current) && ts.isStringLiteral(current.moduleSpecifier) && current.moduleSpecifier.text === moduleName) {
+        return true
+      }
+
+      const fileName = declaration.getSourceFile().fileName.replace(/\\/g, '/')
+      if (fileName.includes(`/node_modules/${moduleName}/`)) {
+        return true
+      }
+    }
+
+    if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+      const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
+      if (aliasedSymbol !== symbol) {
+        return this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
+      }
+    }
+
+    return false
   }
 
   private getLiteralValue(typeNode: ts.LiteralTypeNode): string | number | boolean | null {

@@ -1,3 +1,4 @@
+import * as Joi from 'joi'
 import { Body, Controller, Get, Path, Post, Query, Route, Validate } from '@tsoa-next/runtime'
 import {
   ExternalIntersectionAlias as RenamedExternalIntersectionAlias,
@@ -14,6 +15,14 @@ import {
   ZodAuthoritativeSchema,
   ZodBodySchema,
 } from '../externalValidationModels'
+
+const schema = YupBodySchema
+const InferredJoiNamespaceSchema = Joi.object({
+  name: Joi.string().min(3).required(),
+  status: Joi.string().valid('active', 'disabled').required(),
+  tags: Joi.array().items(Joi.string()).min(1).required(),
+  auditId: Joi.number().integer().positive().required(),
+})
 
 @Route('ExternalValidation')
 export class ExternalValidationController extends Controller {
@@ -33,7 +42,12 @@ export class ExternalValidationController extends Controller {
   }
 
   @Post('yup')
-  public yup(@Body() @Validate({ kind: 'yup', schema: YupBodySchema }) payload: ExternalObjectAlias): ExternalObjectAlias {
+  public yup(@Body() @Validate({ kind: 'yup', schema }) payload: ExternalObjectAlias): ExternalObjectAlias {
+    return payload
+  }
+
+  @Post('joi-inferred')
+  public joiInferred(@Body() @Validate(InferredJoiNamespaceSchema) payload: RenamedExternalIntersectionAlias): RenamedExternalIntersectionAlias {
     return payload
   }
 

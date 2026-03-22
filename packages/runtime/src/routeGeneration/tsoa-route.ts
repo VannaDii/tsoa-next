@@ -64,8 +64,6 @@ export namespace TsoaRoute {
     parameterIndex?: number
     name: string
     in: string
-    validationStrategy?: ValidationStrategy
-    externalValidator?: ExternalValidatorDescriptor
   }
 
   export interface Security {
