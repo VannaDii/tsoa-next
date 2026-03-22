@@ -68,6 +68,18 @@ describe('CompilerOptions', () => {
     expect(compilerOptions.strict).to.equal(true)
   })
 
+  it('keeps the legacy compilerOptions-only call shape permissive for unknown options', () => {
+    expect(() =>
+      validateCompilerOptions(
+        {
+          module: 'esnext',
+          invalidLegacyOption: true,
+        },
+        testDir,
+      ),
+    ).to.not.throw()
+  })
+
   it('supports an explicit tsconfig path and extends', async () => {
     await writeFile(
       join(testDir, 'tsconfig.base.json'),

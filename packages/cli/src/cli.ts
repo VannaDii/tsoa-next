@@ -94,7 +94,7 @@ const getConfig = async (configPath = 'tsoa.json'): Promise<ConfigWithContext> =
 }
 
 const resolveConfig = async (config?: string | Config): Promise<ConfigWithContext> => {
-  if (typeof config === 'object') {
+  if (typeof config === 'object' && config !== null) {
     return {
       config,
       configBaseDir: workingDir,
@@ -109,10 +109,10 @@ const formatCompilerOptionsErrors = (context: string, errors: readonly ts.Diagno
   throw new Error(`${context}: ${message}`)
 }
 
-const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, configBaseDir: string, context: string): CompilerOptions => {
+const parseCompilerOptionsObject = (compilerOptions: Record<string, unknown>, configBaseDir: string, context: string, validateDiagnostics = true): CompilerOptions => {
   const parsed = ts.convertCompilerOptionsFromJson(compilerOptions, configBaseDir)
 
-  if (parsed.errors.length > 0) {
+  if (validateDiagnostics && parsed.errors.length > 0) {
     formatCompilerOptionsErrors(context, parsed.errors)
   }
 
@@ -156,7 +156,7 @@ export function validateCompilerOptions(config: Config, configBaseDir?: string):
 export function validateCompilerOptions(compilerOptions?: Record<string, unknown>, configBaseDir?: string): CompilerOptions
 export function validateCompilerOptions(configOrCompilerOptions?: Config | Record<string, unknown>, configBaseDir = workingDir): CompilerOptions {
   if (!isConfig(configOrCompilerOptions)) {
-    return configOrCompilerOptions ? parseCompilerOptionsObject(configOrCompilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config') : {}
+    return configOrCompilerOptions ? parseCompilerOptionsObject(configOrCompilerOptions, configBaseDir, 'Invalid compilerOptions in tsoa-next config', false) : {}
   }
 
   const tsconfigCompilerOptions = loadTsConfigCompilerOptions(configOrCompilerOptions, configBaseDir)
