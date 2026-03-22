@@ -5,6 +5,9 @@
   "scripts": {
     "build": "turbo run build --output-logs=full",
     "changeset": "changeset",
+    "check:pre-commit": "npm run build && npm run lint",
+    "check:pre-push": "npm run test",
+    "check:standard": "npm run build && npm run lint && npm run test",
     "clean": "turbo run clean --output-logs=full",
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
