@@ -137,8 +137,6 @@ export namespace Swagger {
     description?: string
     deprecated?: boolean
     [ext: `x-${string}`]: unknown
-    exclusiveMaximum?: boolean
-    exclusiveMinimum?: boolean
   } & Pick<BaseSchema, 'type' | 'items' | 'enum' | 'format' | 'minimum' | 'maximum' | 'minLength' | 'maxLength' | 'pattern'>
 
   export type BodyParameter = BaseParameter & {
@@ -177,6 +175,8 @@ export namespace Swagger {
 
   type Swagger2BaseParameter = BaseParameter & {
     schema: Schema2
+    exclusiveMaximum?: boolean
+    exclusiveMinimum?: boolean
   }
 
   export type Swagger2BodyParameter = Swagger2BaseParameter & BodyParameter
