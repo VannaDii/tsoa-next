@@ -6,28 +6,41 @@ import { App } from 'supertest/types'
 
 export function verifyRequest(app: App, verifyResponse: (err: any, res: request.Response) => any, methodOperation: (request: TestAgent<request.Test>) => request.Test, expectedStatus = 200) {
   return new Promise<void>((resolve, reject) => {
-    methodOperation(request(app))
-      .expect(expectedStatus)
-      .end((err: any, res: any) => {
-        let parsedError: any
-        try {
-          parsedError = JSON.parse(res.error)
-        } catch (err) {
-          parsedError = res?.error
-        }
+    const attemptRequest = (remainingRetries: number) => {
+      methodOperation(request(app))
+        .expect(expectedStatus)
+        .end((err: any, res: any) => {
+          if (err && !res && remainingRetries > 0) {
+            attemptRequest(remainingRetries - 1)
+            return
+          }
 
-        if (err) {
-          verifyResponse(err, res)
-          reject({
-            error: err,
-            response: parsedError,
-          })
-          return
-        }
+          let parsedError: any
+          try {
+            parsedError = JSON.parse(res.error)
+          } catch (_err) {
+            parsedError = res?.error
+          }
 
-        verifyResponse(parsedError, res)
-        resolve()
-      })
+          try {
+            if (err) {
+              verifyResponse(err, res)
+              reject({
+                error: err,
+                response: parsedError,
+              })
+              return
+            }
+
+            verifyResponse(parsedError, res)
+            resolve()
+          } catch (verificationError) {
+            reject(verificationError)
+          }
+        })
+    }
+
+    attemptRequest(1)
   })
 }
 

@@ -17,6 +17,7 @@ export default defineConfig([
     ignorePatterns: [
       'node_modules',
       'dist',
+      'coverage',
       'commitlint.config.cjs',
       'eslint.config.ts',
       'prettier.config.ts',

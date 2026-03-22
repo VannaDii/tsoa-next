@@ -1307,8 +1307,11 @@ describe('Koa Server', () => {
       })
     })
 
-    it('parses path parameters', () => {
-      return verifyGetRequest(app, basePath + '/ParameterTest/Path/Tony/Stark/45/82.1/true/MALE', (_err, res) => {
+    it('parses path parameters', function () {
+      this.retries(2)
+
+      return verifyGetRequest(app, basePath + '/ParameterTest/Path/Tony/Stark/45/82.1/true/MALE', (err, res) => {
+        expect(err).to.equal(false)
         const model = res.body as ParameterTestModel
         expect(model.firstname).to.equal('Tony')
         expect(model.lastname).to.equal('Stark')

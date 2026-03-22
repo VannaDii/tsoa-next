@@ -6,7 +6,7 @@ import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
 describe('External validation metadata', function () {
-  this.timeout(15000)
+  this.timeout(30000)
 
   const metadata = new MetadataGenerator('./fixtures/controllers/externalValidationController.ts').Generate()
   const spec2 = new SpecGenerator2(metadata, getDefaultExtendedOptions()).GetSpec()

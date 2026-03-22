@@ -51,6 +51,9 @@ jobs:
       - name: Install
         run: npm install --ignore-scripts
 
+      - name: Build
+        run: npm run build
+
       - name: Generate coverage
         run: npm run coverage
 
@@ -70,7 +73,10 @@ jobs:
 
   build:
     name: Build
-    needs: detect-package-impact
+    needs:
+      - detect-package-impact
+      - coverage
+    if: always() && github.ref != 'refs/heads/changeset-release/main'
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -79,12 +85,22 @@ jobs:
         typescript-version: ["^5.0.0"]
 
     steps:
+      - name: Skip when no impacted packages changed
+        if: needs.detect-package-impact.outputs.has-impact != 'true'
+        run: echo "No impacted packages changed; skipping build matrix."
+
+      - name: Fail when coverage gate does not pass
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result != 'success'
+        run: |
+          echo "Coverage gate did not pass."
+          exit 1
+
       - name: Checkout
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         uses: actions/checkout@v6.0.2
 
       - name: Setup Node
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         uses: actions/setup-node@v6.3.0
         with:
           node-version: ${{ matrix.node-version }}
@@ -92,29 +108,29 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Set override for matrix TypeScript version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm pkg set 'overrides.typescript=${{ matrix.typescript-version }}'
 
       - name: Install
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm install --ignore-scripts
 
       - name: Output ts version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm exec -- tsc --version
 
       - name: Output packages version
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm ls --workspaces --depth=0
 
       - name: Build
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run build
 
       - name: Lint
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run lint
 
       - name: Test
-        if: github.ref != 'refs/heads/changeset-release/main' && needs.detect-package-impact.outputs.has-impact == 'true'
+        if: needs.detect-package-impact.outputs.has-impact == 'true' && needs.coverage.result == 'success'
         run: npm run test
