@@ -2,7 +2,7 @@ import * as ts from 'typescript'
 import { Tsoa } from '@tsoa-next/runtime'
 import { getInitializerValue, type InitializerValue } from '../metadataGeneration/initializer-value'
 
-const TSOA_DECORATOR_MODULES = new Set(['@tsoa-next/runtime', 'tsoa-next'])
+const TSOA_DECORATOR_MODULES = ['@tsoa-next/runtime', 'tsoa-next']
 const TSOA_DECORATOR_NAMES = new Set([
   'Body',
   'BodyProp',
@@ -161,16 +161,17 @@ export function getCanonicalDecoratorName(identifier: ts.Identifier, typeChecker
   }
 
   const resolvedSymbol = resolveAliasedSymbol(symbol, typeChecker)
+  const symbolIsRuntimeDecorator = isRuntimeDecoratorSymbol(symbol) || isRuntimeDecoratorSymbol(resolvedSymbol)
+  if (!symbolIsRuntimeDecorator) {
+    return getImportedDecoratorName(symbol)
+  }
+
   const candidateName = resolvedSymbol.getName()
-  if (!TSOA_DECORATOR_NAMES.has(candidateName)) {
-    return undefined
+  if (TSOA_DECORATOR_NAMES.has(candidateName)) {
+    return candidateName
   }
 
-  if (!isRuntimeDecoratorSymbol(symbol) && !isRuntimeDecoratorSymbol(resolvedSymbol)) {
-    return undefined
-  }
-
-  return candidateName
+  return getImportedDecoratorName(symbol)
 }
 
 function resolveAliasedSymbol(symbol: ts.Symbol, typeChecker: ts.TypeChecker): ts.Symbol {
@@ -194,7 +195,7 @@ function isRuntimeDecoratorSymbol(symbol: ts.Symbol): boolean {
 
   return declarations.some(declaration => {
     const moduleSpecifier = getModuleSpecifierText(declaration)
-    if (moduleSpecifier && TSOA_DECORATOR_MODULES.has(moduleSpecifier)) {
+    if (moduleSpecifier && isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
       return true
     }
 
@@ -209,6 +210,10 @@ function isRuntimeDecoratorSymbol(symbol: ts.Symbol): boolean {
   })
 }
 
+function isTsoaDecoratorModuleSpecifier(moduleSpecifier: string): boolean {
+  return TSOA_DECORATOR_MODULES.some(prefix => moduleSpecifier === prefix || moduleSpecifier.startsWith(`${prefix}/`))
+}
+
 function getModuleSpecifierText(declaration: ts.Declaration): string | undefined {
   if (ts.isImportSpecifier(declaration)) {
     const importDeclaration = declaration.parent.parent.parent
@@ -221,6 +226,38 @@ function getModuleSpecifierText(declaration: ts.Declaration): string | undefined
     const exportDeclaration = declaration.parent.parent
     if (ts.isExportDeclaration(exportDeclaration) && exportDeclaration.moduleSpecifier && ts.isStringLiteral(exportDeclaration.moduleSpecifier)) {
       return exportDeclaration.moduleSpecifier.text
+    }
+  }
+
+  return undefined
+}
+
+function getImportedDecoratorName(symbol: ts.Symbol): string | undefined {
+  const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
+
+  for (const declaration of declarations) {
+    if (ts.isImportSpecifier(declaration)) {
+      const moduleSpecifier = getModuleSpecifierText(declaration)
+      if (!moduleSpecifier || !isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
+        continue
+      }
+
+      const importedName = declaration.propertyName?.text ?? declaration.name.text
+      if (TSOA_DECORATOR_NAMES.has(importedName)) {
+        return importedName
+      }
+    }
+
+    if (ts.isExportSpecifier(declaration)) {
+      const moduleSpecifier = getModuleSpecifierText(declaration)
+      if (!moduleSpecifier || !isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
+        continue
+      }
+
+      const exportedName = declaration.propertyName?.text ?? declaration.name.text
+      if (TSOA_DECORATOR_NAMES.has(exportedName)) {
+        return exportedName
+      }
     }
   }
 
