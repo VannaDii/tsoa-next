@@ -326,13 +326,19 @@ export class SpecGenerator2 extends SpecGenerator {
   private buildParameter(source: Tsoa.Parameter): Swagger.Parameter2 {
     let type = source.type
 
-    if (source.in !== 'body' && source.type.dataType === 'refEnum') {
+    if (source.in !== 'body') {
+      while (type.dataType === 'refAlias') {
+        type = type.type
+      }
+    }
+
+    if (source.in !== 'body' && type.dataType === 'refEnum') {
       // swagger does not support referencing enums
       // (except for body parameters), so we have to inline it
 
       type = {
         dataType: 'enum',
-        enums: source.type.enums,
+        enums: type.enums,
       }
     }
 

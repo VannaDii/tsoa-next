@@ -172,8 +172,6 @@ describe('Schema details generation', () => {
         expect(parameter).to.deep.equal({
           default: undefined,
           description: undefined,
-          enum: undefined,
-          items: undefined,
           in: 'formData',
           name: 'someFile',
           required: true,
@@ -197,8 +195,6 @@ describe('Schema details generation', () => {
         expect(parameter).to.deep.equal({
           default: undefined,
           description: undefined,
-          enum: undefined,
-          items: undefined,
           in: 'formData',
           name: 'aFile',
           required: true,
@@ -221,8 +217,6 @@ describe('Schema details generation', () => {
         const baseParameter = {
           default: undefined,
           description: undefined,
-          enum: undefined,
-          items: undefined,
           required: true,
           in: 'formData',
         }
@@ -259,8 +253,6 @@ describe('Schema details generation', () => {
         const baseParameter = {
           default: undefined,
           description: undefined,
-          enum: undefined,
-          items: undefined,
           required: true,
           in: 'formData',
         }
