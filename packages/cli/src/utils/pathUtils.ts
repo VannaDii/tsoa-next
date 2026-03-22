@@ -11,13 +11,12 @@ export function normalisePath(path: string, withPrefix?: string, withSuffix?: st
   if (!path || typeof path !== 'string') {
     path = '' + path
   }
-  // normalise beginning and end of the path
-  let normalised = path.replace(/^[/\\\s]+|[/\\\s]+$/g, '')
+
+  let normalised = trimPathDelimiters(path)
   normalised = withPrefix ? withPrefix + normalised : normalised
   normalised = withSuffix ? normalised + withSuffix : normalised
-  // normalise / signs amount in all path
-  normalised = normalised.replace(/[/\\\s]+/g, '/')
-  return normalised
+
+  return collapsePathDelimiters(normalised)
 }
 
 export function convertColonPathParams(path: string) {
@@ -31,4 +30,43 @@ export function convertColonPathParams(path: string) {
 
 export function convertBracesPathParams(path: string) {
   return path.replace(/{(\w*)}/g, ':$1')
+}
+
+function trimPathDelimiters(path: string) {
+  let start = 0
+  let end = path.length
+
+  while (start < end && isPathDelimiter(path[start])) {
+    start++
+  }
+
+  while (end > start && isPathDelimiter(path[end - 1])) {
+    end--
+  }
+
+  return path.slice(start, end)
+}
+
+function collapsePathDelimiters(path: string) {
+  const normalisedChars: string[] = []
+  let previousWasDelimiter = false
+
+  for (const character of path) {
+    if (isPathDelimiter(character)) {
+      if (!previousWasDelimiter) {
+        normalisedChars.push('/')
+        previousWasDelimiter = true
+      }
+      continue
+    }
+
+    normalisedChars.push(character)
+    previousWasDelimiter = false
+  }
+
+  return normalisedChars.join('')
+}
+
+function isPathDelimiter(character: string) {
+  return character === '/' || character === '\\' || character.trim() === ''
 }

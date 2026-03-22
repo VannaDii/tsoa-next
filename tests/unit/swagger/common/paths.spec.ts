@@ -61,6 +61,11 @@ describe('Paths normalisation', () => {
     expect(normalisePath('', 'prefix', 'suffix')).to.equal('')
     expect(normalisePath('', 'prefix', 'suffix', false)).to.equal('prefixsuffix')
   })
+
+  it('should handle long delimiter runs without changing output', () => {
+    const path = `${'\t'.repeat(20_000)}api${'\t'.repeat(20_000)}v1${'\t'.repeat(20_000)}users${'\t'.repeat(20_000)}`
+    expect(normalisePath(path)).to.equal('api/v1/users')
+  })
 })
 
 describe('Colon path params conversion', () => {
