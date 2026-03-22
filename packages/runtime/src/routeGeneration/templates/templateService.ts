@@ -41,20 +41,27 @@ export abstract class TemplateService<ApiHandlerParameters, ValidationArgsParame
     return false
   }
 
-  protected isEmptyParsedBody(body: unknown): body is Record<string, unknown> {
-    return typeof body === 'object' && body !== null && !Array.isArray(body) && Object.keys(body).length === 0
+  protected requestUsesTransferEncoding(headers: Record<string, unknown>): boolean {
+    return headers['transfer-encoding'] !== undefined
   }
 
   protected normalizeRequestBody(body: unknown, headers: Record<string, unknown>): unknown {
-    if (this.requestHasBody(headers)) {
-      return body
-    }
-
-    if (headers['transfer-encoding'] !== undefined && !this.isEmptyParsedBody(body)) {
+    if (this.requestHasBody(headers) || this.requestUsesTransferEncoding(headers)) {
       return body
     }
 
     return undefined
+  }
+
+  protected getBodyProperty(body: unknown, headers: Record<string, unknown>, propertyName: string): unknown {
+    const normalizedBody = this.normalizeRequestBody(body, headers)
+
+    if (typeof normalizedBody !== 'object' || normalizedBody === null || Array.isArray(normalizedBody)) {
+      return undefined
+    }
+
+    const descriptor = Object.getOwnPropertyDescriptor(normalizedBody, propertyName)
+    return descriptor ? descriptor.value : undefined
   }
 
   protected buildPromise(methodName: string, controller: Controller | object, validatedArgs: any) {

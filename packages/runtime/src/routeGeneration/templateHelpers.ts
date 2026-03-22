@@ -871,15 +871,12 @@ export class ValidationService {
     }
 
     if (obj instanceof RegExp) {
-      return new RegExp(obj.source, obj.flags) as any
+      // Preserve the existing instance instead of reconstructing a pattern from untrusted data.
+      return obj
     }
 
-    if (obj instanceof Array) {
-      const cloneArr: any[] = new Array(obj.length)
-      for (let i = 0; i < obj.length; i++) {
-        cloneArr[i] = this.deepClone(obj[i])
-      }
-      return cloneArr as any
+    if (Array.isArray(obj)) {
+      return obj.map(value => this.deepClone(value)) as any
     }
 
     if (Buffer && obj instanceof Buffer) {

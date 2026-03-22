@@ -81,8 +81,8 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
         }
         case 'body-prop': {
           const bodyPropFieldErrors: FieldErrors = {}
-          const normalizedBody = this.normalizeRequestBody(request.body, request.headers) as Record<string, unknown> | undefined
-          const bodyPropArgs = this.validationService.ValidateParam(param, normalizedBody?.[name], name, bodyPropFieldErrors, true, 'body.')
+          const bodyPropValue = this.getBodyProperty(request.body, request.headers, name)
+          const bodyPropArgs = this.validationService.ValidateParam(param, bodyPropValue, name, bodyPropFieldErrors, true, 'body.')
           Object.keys(bodyPropFieldErrors).forEach(key => {
             fieldErrors[key] = { message: bodyPropFieldErrors[key].message }
           })

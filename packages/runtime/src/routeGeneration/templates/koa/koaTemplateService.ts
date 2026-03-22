@@ -74,8 +74,7 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
           return this.validationService.ValidateParam(param, context.request.headers[name], name, errorFields, false, undefined)
         case 'body': {
           const descriptor = Object.getOwnPropertyDescriptor(context.request, 'body')
-          const hasBody = context.request.length !== undefined ? Number(context.request.length) > 0 : this.requestHasBody(context.request.headers)
-          const value = hasBody ? descriptor?.value : undefined
+          const value = this.normalizeRequestBody(descriptor?.value, context.request.headers)
           const bodyFieldErrors: FieldErrors = {}
           const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, undefined)
           Object.keys(bodyFieldErrors).forEach(key => {
@@ -85,8 +84,7 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
         }
         case 'body-prop': {
           const descriptor = Object.getOwnPropertyDescriptor(context.request, 'body')
-          const hasBody = context.request.length !== undefined ? Number(context.request.length) > 0 : this.requestHasBody(context.request.headers)
-          const value = hasBody ? descriptor?.value?.[name] : undefined
+          const value = this.getBodyProperty(descriptor?.value, context.request.headers, name)
           const bodyFieldErrors: FieldErrors = {}
           const result = this.validationService.ValidateParam(param, value, name, bodyFieldErrors, true, 'body.')
           Object.keys(bodyFieldErrors).forEach(key => {
