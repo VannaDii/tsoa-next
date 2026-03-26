@@ -9,7 +9,7 @@
     "check:pre-push": "npm run test",
     "check:standard": "npm run build && npm run lint && npm run test",
     "clean": "turbo run clean --output-logs=full",
-    "coverage": "sh -c 'trap \"rimraf coverage/tmp\" EXIT; rimraf coverage; npm --prefix tests run pretest; c8 sh -c \"cd tests && npx cross-env NODE_ENV=tsoa_test mocha \\\"**/*.spec.ts\\\" --timeout 10000\"'",
+    "coverage": "rimraf coverage && npm --prefix tests run pretest && c8 npm --prefix tests run test:coverage",
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
     "docs:preview": "vitepress preview site/guide-docs",
