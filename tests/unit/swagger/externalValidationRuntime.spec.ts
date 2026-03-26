@@ -1,6 +1,9 @@
 import { expect } from 'chai'
 import 'mocha'
-import { TsoaRoute, Validate, ValidationService, validateExternalSchema } from '@tsoa-next/runtime'
+import { TsoaRoute, ValidationService } from '@tsoa-next/runtime'
+import * as runtimeSource from '../../../packages/runtime/src'
+import { Validate as sourceValidate, getParameterExternalValidatorMetadata } from '../../../packages/runtime/src/decorators/validate'
+import { validateExternalSchema as sourceValidateExternalSchema } from '../../../packages/runtime/src/routeGeneration/externalValidation'
 import { z } from 'zod'
 import {
   JoiBodySchema,
@@ -17,8 +20,163 @@ describe('External validation runtime', () => {
     bodyCoercion: true,
   }
 
+  it('re-exports validation helpers from the source runtime barrel', () => {
+    expect(runtimeSource.Validate).to.be.a('function')
+    expect(runtimeSource.validateExternalSchema).to.be.a('function')
+    expect(runtimeSource.ValidationService).to.be.a('function')
+  })
+
+  it('stores validator metadata for each supported decorator form', () => {
+    const target = {}
+    const zodStringSchema = z.string()
+
+    sourceValidate(ZodBodySchema)(target, 'zodInferred', 0)
+    sourceValidate('joi', JoiBodySchema)(target, 'joiExplicit', 1)
+    sourceValidate({ kind: 'yup', schema: YupBodySchema })(target, 'yupObject', 2)
+    sourceValidate(SuperstructBodySchema)(target, 'superstructInferred', 3)
+    sourceValidate(WagerCodec)(target, 'ioTsInferred', 4)
+    sourceValidate(zodStringSchema)(target, undefined, 5)
+
+    expect(getParameterExternalValidatorMetadata(target, 'zodInferred', 0)).to.deep.equal({ kind: 'zod', schema: ZodBodySchema })
+    expect(getParameterExternalValidatorMetadata(target, 'joiExplicit', 1)).to.deep.equal({ kind: 'joi', schema: JoiBodySchema })
+    expect(getParameterExternalValidatorMetadata(target, 'yupObject', 2)).to.deep.equal({ kind: 'yup', schema: YupBodySchema })
+    expect(getParameterExternalValidatorMetadata(target, 'superstructInferred', 3)).to.deep.equal({ kind: 'superstruct', schema: SuperstructBodySchema })
+    expect(getParameterExternalValidatorMetadata(target, 'ioTsInferred', 4)).to.deep.equal({ kind: 'io-ts', schema: WagerCodec })
+    expect(getParameterExternalValidatorMetadata(target, undefined, 5)).to.deep.equal({ kind: 'zod', schema: zodStringSchema })
+  })
+
+  it('reads validator metadata through the prototype chain', () => {
+    const parent = {}
+    const child = Object.create(parent)
+
+    sourceValidate(ZodBodySchema)(parent, 'submit', 0)
+
+    expect(getParameterExternalValidatorMetadata(child, 'submit', 0)).to.deep.equal({
+      kind: 'zod',
+      schema: ZodBodySchema,
+    })
+  })
+
+  it('rejects invalid decorator argument combinations', () => {
+    expect(() => sourceValidate()).to.throw('@Validate requires a schema argument.')
+    expect(() => sourceValidate('zod')).to.throw("@Validate('zod', schema) requires a schema value.")
+    expect(() => sourceValidate('ajv' as never, {})).to.throw("@Validate received unsupported validator kind 'ajv'.")
+    expect(() => sourceValidate({ kind: 'ajv', schema: {} } as never)).to.throw("@Validate received unsupported validator kind 'ajv'.")
+    expect(() => sourceValidate({ kind: 'zod' } as never)).to.throw('@Validate(schema) could not infer the validator kind. Use @Validate(kind, schema) instead.')
+    expect(() => sourceValidate({ kind: 'zod', schema: undefined } as never)).to.throw('@Validate requires a schema value.')
+    expect(() => sourceValidate({}, {}, {})).to.throw('@Validate accepts only (schema), (kind, schema), or ({ kind, schema }).')
+    expect(() => sourceValidate({})).to.throw('@Validate(schema) could not infer the validator kind. Use @Validate(kind, schema) instead.')
+  })
+
+  it('returns successful results for every supported runtime adapter', () => {
+    const zodResult = sourceValidateExternalSchema('zod', ZodBodySchema, {
+      name: 'valid',
+      status: 'active',
+      tags: ['ok'],
+    })
+    const joiResult = sourceValidateExternalSchema('joi', JoiBodySchema, {
+      name: 'valid',
+      status: 'active',
+      tags: ['ok'],
+      auditId: 1,
+    })
+    const yupResult = sourceValidateExternalSchema('yup', YupBodySchema, {
+      name: 'valid',
+      status: 'active',
+      tags: ['ok'],
+    })
+    const superstructResult = sourceValidateExternalSchema('superstruct', SuperstructBodySchema, {
+      name: 'valid',
+      status: 'active',
+      tags: ['ok'],
+      auditId: 1,
+    })
+    const ioTsResult = sourceValidateExternalSchema('io-ts', WagerCodec, {
+      amount: 1,
+      outcome: 1,
+    })
+
+    expect(zodResult).to.deep.include({ ok: true })
+    expect(joiResult).to.deep.include({ ok: true })
+    expect(yupResult).to.deep.include({ ok: true })
+    expect(superstructResult).to.deep.include({ ok: true })
+    expect(ioTsResult).to.deep.include({ ok: true })
+  })
+
+  it('throws clear adapter contract errors for invalid schema objects', () => {
+    expect(() => sourceValidateExternalSchema('zod', {}, 'value')).to.throw('Expected a Zod schema with safeParse().')
+    expect(() => sourceValidateExternalSchema('joi', {}, 'value')).to.throw('Expected a Joi schema with validate().')
+    expect(() => sourceValidateExternalSchema('yup', {}, 'value')).to.throw('Expected a Yup schema with validateSync().')
+    expect(() => sourceValidateExternalSchema('io-ts', {}, 'value')).to.throw('Expected an io-ts codec with decode().')
+  })
+
+  it('applies custom error formatters to external validation failures', () => {
+    const result = sourceValidateExternalSchema(
+      'zod',
+      ZodBodySchema,
+      {
+        name: 'x',
+        status: 'active',
+        tags: [],
+      },
+      {
+        errorFormatter: failure => ({
+          ...failure,
+          summaryMessage: 'formatted',
+          issues: failure.issues.map(issue => ({
+            ...issue,
+            message: `formatted:${issue.message}`,
+          })),
+        }),
+      },
+    )
+
+    if (result.ok) {
+      throw new Error('Expected zod validation to fail.')
+    }
+
+    expect(result.failure.summaryMessage).to.equal('formatted')
+    expect(result.failure.issues.every(issue => issue.message?.startsWith('formatted:'))).to.equal(true)
+  })
+
+  it('falls back to a generic io-ts summary when PathReporter is unavailable', () => {
+    const moduleLoader = require('module') as {
+      prototype: { require: (id: string) => unknown }
+    }
+    const originalRequire = moduleLoader.prototype.require
+
+    moduleLoader.prototype.require = function patchedRequire(id: string) {
+      if (id === 'io-ts/PathReporter') {
+        throw new Error('module not found')
+      }
+
+      return originalRequire.apply(this, [id])
+    }
+
+    try {
+      const result = sourceValidateExternalSchema(
+        'io-ts',
+        {
+          decode: () => ({
+            _tag: 'Left',
+            left: [{ context: [{ key: '', type: { name: 'Root' } }] }],
+          }),
+        },
+        {},
+      )
+
+      if (result.ok) {
+        throw new Error('Expected io-ts validation to fail.')
+      }
+
+      expect(result.failure.summaryMessage).to.equal('io-ts validation failed.')
+    } finally {
+      moduleLoader.prototype.require = originalRequire
+    }
+  })
+
   it('normalizes zod failures', () => {
-    const result = validateExternalSchema('zod', ZodBodySchema, {
+    const result = sourceValidateExternalSchema('zod', ZodBodySchema, {
       name: 'xy',
       status: 'active',
       tags: [],
@@ -34,7 +192,7 @@ describe('External validation runtime', () => {
   })
 
   it('normalizes joi failures', () => {
-    const result = validateExternalSchema('joi', JoiBodySchema, {
+    const result = sourceValidateExternalSchema('joi', JoiBodySchema, {
       name: 'valid',
       status: 'active',
       tags: ['ok'],
@@ -51,7 +209,7 @@ describe('External validation runtime', () => {
   })
 
   it('normalizes yup failures', () => {
-    const result = validateExternalSchema('yup', YupBodySchema, {
+    const result = sourceValidateExternalSchema('yup', YupBodySchema, {
       name: 'xy',
       status: 'invalid',
       tags: [],
@@ -66,7 +224,7 @@ describe('External validation runtime', () => {
   })
 
   it('normalizes superstruct failures', () => {
-    const result = validateExternalSchema('superstruct', SuperstructBodySchema, {
+    const result = sourceValidateExternalSchema('superstruct', SuperstructBodySchema, {
       name: 12,
       status: 'active',
       tags: [],
@@ -82,7 +240,7 @@ describe('External validation runtime', () => {
   })
 
   it('normalizes io-ts branded failures and preserves message keys', () => {
-    const result = validateExternalSchema(
+    const result = sourceValidateExternalSchema(
       'io-ts',
       WagerCodec,
       {
@@ -107,7 +265,7 @@ describe('External validation runtime', () => {
 
   it('skips built-in validation when external validation owns the node', () => {
     class ExternalController {
-      public submit(@Validate(ZodAuthoritativeSchema) payload: string) {
+      public submit(@sourceValidate(ZodAuthoritativeSchema) payload: string) {
         return payload
       }
     }
@@ -136,7 +294,7 @@ describe('External validation runtime', () => {
 
   it('treats external validation as authoritative even when built-in validation would pass', () => {
     class ExternalController {
-      public submit(@Validate(ZodAuthoritativeSchema) payload: string) {
+      public submit(@sourceValidate(ZodAuthoritativeSchema) payload: string) {
         return payload
       }
     }
@@ -165,7 +323,7 @@ describe('External validation runtime', () => {
 
   it('enforces required route metadata before delegating to external validation', () => {
     class ExternalController {
-      public submit(@Validate(z.string().optional()) payload?: string) {
+      public submit(@sourceValidate(z.string().optional()) payload?: string) {
         return payload
       }
     }
@@ -199,7 +357,7 @@ describe('External validation runtime', () => {
 
   it('applies translation hooks when projecting external issues to legacy field errors', () => {
     class ExternalController {
-      public submit(@Validate(ZodAuthoritativeSchema) payload: string) {
+      public submit(@sourceValidate(ZodAuthoritativeSchema) payload: string) {
         return payload
       }
     }
@@ -232,7 +390,7 @@ describe('External validation runtime', () => {
 
   it('fails clearly when generated route metadata and runtime validator metadata disagree on validator kind', () => {
     class ExternalController {
-      public submit(@Validate('zod', ZodAuthoritativeSchema) payload: string) {
+      public submit(@sourceValidate('zod', ZodAuthoritativeSchema) payload: string) {
         return payload
       }
     }
@@ -260,7 +418,7 @@ describe('External validation runtime', () => {
 
   it('finds runtime external validator metadata for static controller methods', () => {
     class StaticExternalController {
-      public static submit(@Validate(ZodAuthoritativeSchema) payload: string) {
+      public static submit(@sourceValidate(ZodAuthoritativeSchema) payload: string) {
         return payload
       }
     }
