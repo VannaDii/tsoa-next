@@ -6,9 +6,9 @@ Pronounced so·uh
 
 OpenAPI-compliant REST APIs using TypeScript and Node
 
-[![build status](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)](https://github.com/vannadii/tsoa-next/actions/workflows/runTestsOnPush.yml)
+[![build status](https://github.com/tsoa-next/tsoa-next/actions/workflows/runTestsOnPush.yml/badge.svg)](https://github.com/tsoa-next/tsoa-next/actions/workflows/runTestsOnPush.yml)
 [![npm version](https://img.shields.io/npm/v/tsoa-next/latest)](https://www.npmjs.com/package/tsoa-next)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=VannaDii_tsoa-next&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=VannaDii_tsoa-next)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tsoa-next_tsoa-next&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tsoa-next_tsoa-next)
 
 </div>
 
@@ -103,12 +103,12 @@ This feature is fully opt-in. If you do not use `@Validate(...)`, existing inter
 
 Check out the [guides](https://tsoa-next.dev/)
 
-See example controllers in [the tests](https://github.com/VannaDii/tsoa-next/tree/main/tests/fixtures/controllers)
+See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)
 
-See example models in [the tests](https://github.com/VannaDii/tsoa-next/blob/main/tests/fixtures/testModel.ts)
+See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)
 
 ## Help wanted
 
 ### Contributing code
 
-To contribute (via a PR), please first see the [Contributing Guide](https://github.com/VannaDii/tsoa-next/blob/main/docs/CONTRIBUTING.md)
+To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)

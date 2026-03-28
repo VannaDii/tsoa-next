@@ -4,6 +4,6 @@ This package contains the runtime helpers for `tsoa-next`.
 
 For the main README and API reference, see:
 
-- [Repository README](https://github.com/VannaDii/tsoa-next#readme)
+- [Repository README](https://github.com/tsoa-next/tsoa-next#readme)
 - [Project documentation](https://tsoa-next.dev/)
 - [API reference](https://tsoa-next.dev/reference/)

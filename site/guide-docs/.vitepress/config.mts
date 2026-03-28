@@ -59,7 +59,7 @@ export default defineConfig({
       },
       {
         text: 'GitHub',
-        link: 'https://github.com/VannaDii/tsoa-next',
+        link: 'https://github.com/tsoa-next/tsoa-next',
       },
     ],
     sidebar,
