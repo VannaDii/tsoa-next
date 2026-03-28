@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 const { execFileSync, spawnSync } = require('node:child_process')
-const { readFileSync } = require('node:fs')
+const { existsSync, readFileSync } = require('node:fs')
+const path = require('node:path')
 
 const EMPTY_TREE_SHA = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
 const BUILD_WORKSPACES = ['@tsoa-next/cli', '@tsoa-next/runtime', 'tsoa-next']
@@ -27,8 +28,11 @@ const GLOBAL_TEST_PATHS = new Set([
   'prettier.config.ts',
   'turbo.json',
 ])
+const TRUSTED_GIT_EXECUTABLES = ['/opt/homebrew/bin/git', '/usr/local/bin/git', '/usr/bin/git']
+const GIT_EXECUTABLE = resolveFirstExistingPath(TRUSTED_GIT_EXECUTABLES)
+const NPM_CLI = resolveNpmCliPath()
 
-const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+const repoRoot = execFileSync(GIT_EXECUTABLE, ['rev-parse', '--show-toplevel'], {
   cwd: process.cwd(),
   encoding: 'utf8',
   stdio: ['ignore', 'pipe', 'inherit'],
@@ -194,7 +198,7 @@ function toTurboFilters(workspaces) {
 }
 
 function runNpmExec(args) {
-  const result = spawnSync('npm', ['exec', '--', ...args], {
+  const result = spawnSync(process.execPath, [NPM_CLI, 'exec', '--', ...args], {
     cwd: repoRoot,
     stdio: 'inherit',
   })
@@ -205,7 +209,7 @@ function runNpmExec(args) {
 }
 
 function runGit(args) {
-  return execFileSync('git', args, {
+  return execFileSync(GIT_EXECUTABLE, args, {
     cwd: repoRoot,
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
@@ -218,4 +222,21 @@ function tryRunGit(args) {
   } catch {
     return undefined
   }
+}
+
+function resolveFirstExistingPath(candidates) {
+  const executable = candidates.find(candidate => existsSync(candidate))
+  if (!executable) {
+    throw new Error(`Unable to locate an executable in the trusted path list: ${candidates.join(', ')}`)
+  }
+
+  return executable
+}
+
+function resolveNpmCliPath() {
+  const nodeBinDir = path.dirname(process.execPath)
+  return resolveFirstExistingPath([
+    path.resolve(nodeBinDir, '../lib/node_modules/npm/bin/npm-cli.js'),
+    path.resolve(nodeBinDir, '../../lib/node_modules/npm/bin/npm-cli.js'),
+  ])
 }
