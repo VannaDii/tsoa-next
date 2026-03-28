@@ -5,7 +5,6 @@ import {
   type ExternalLiteralUnionAlias,
   type ExternalObjectAlias,
   type ExternalObjectPageAlias,
-  type ExternalPrimitiveAlias,
   type ExternalSearchResultAlias,
   JoiBodySchema,
   SuperstructBodySchema,
@@ -72,7 +71,7 @@ export class ExternalValidationController extends Controller {
   }
 
   @Get('alias/{id}')
-  public aliasPath(@Path() id: ExternalPrimitiveAlias, @Query() status?: ExternalLiteralUnionAlias): RenamedExternalIntersectionAlias {
+  public aliasPath(@Path() id: string, @Query() status?: ExternalLiteralUnionAlias): RenamedExternalIntersectionAlias {
     return {
       auditId: 7,
       name: id,

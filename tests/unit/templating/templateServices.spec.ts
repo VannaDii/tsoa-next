@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
 import { PassThrough, Readable } from 'node:stream'
-import { Controller, TsoaRoute, ValidateError } from '@tsoa-next/runtime'
+import { Controller, TsoaRoute } from '@tsoa-next/runtime'
 import { AdditionalProps } from '../../../packages/runtime/src/routeGeneration/additionalProps'
 import { ExpressTemplateService } from '../../../packages/runtime/src/routeGeneration/templates/express/expressTemplateService'
 import { HapiTemplateService } from '../../../packages/runtime/src/routeGeneration/templates/hapi/hapiTemplateService'
@@ -12,7 +12,8 @@ const config: AdditionalProps = {
   bodyCoercion: true,
 }
 
-const asParam = (param: Partial<TsoaRoute.ParameterSchema>): TsoaRoute.ParameterSchema => param as TsoaRoute.ParameterSchema
+const asParam = (param: Partial<TsoaRoute.ParameterSchema>) => param as TsoaRoute.ParameterSchema
+const createThrownError = (message: string, properties: Record<string, unknown>) => Object.assign(new Error(message), properties)
 
 describe('Template services', () => {
   describe('ExpressTemplateService', () => {
@@ -388,7 +389,7 @@ describe('Template services', () => {
 
       class TeaController {
         public submit() {
-          throw { status: 418, name: 'TeaError', message: 'tea time' }
+          throw createThrownError('tea time', { status: 418, name: 'TeaError' })
         }
       }
       try {
@@ -589,7 +590,7 @@ describe('Template services', () => {
           ;(this as { headers: Array<{ name: string; value: unknown }> }).headers.push({ name, value })
         },
         throw(status: number, message: string, properties?: unknown) {
-          throw { status, message, properties }
+          throw createThrownError(message, { status, properties })
         },
       }
 
@@ -669,7 +670,7 @@ describe('Template services', () => {
 
       class ConflictController {
         public submit() {
-          throw { status: 409, message: 'conflict', reason: 'duplicate' }
+          throw createThrownError('conflict', { status: 409, reason: 'duplicate' })
         }
       }
       try {
@@ -679,22 +680,20 @@ describe('Template services', () => {
           context: {
             status: 0,
             throw(status: number, message: string, properties?: unknown) {
-              throw { status, message, properties }
+              throw createThrownError(message, { status, properties })
             },
           } as never,
           validatedArgs: [],
         })
         throw new Error('Expected Koa apiHandler to throw through context.throw.')
       } catch (error) {
-        expect(error).to.deep.equal({
-          status: 409,
-          message: 'conflict',
-          properties: {
-            status: 409,
-            message: 'conflict',
-            reason: 'duplicate',
-          },
-        })
+        expect(error).to.be.instanceOf(Error)
+        expect(error).to.have.property('message', 'conflict')
+        expect(error).to.have.property('status', 409)
+        expect(error).to.have.property('properties').that.is.instanceOf(Error)
+        expect(error).to.have.nested.property('properties.status', 409)
+        expect(error).to.have.nested.property('properties.message', 'conflict')
+        expect(error).to.have.nested.property('properties.reason', 'duplicate')
       }
 
       mutableService.validationService = {

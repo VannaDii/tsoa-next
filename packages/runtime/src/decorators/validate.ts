@@ -10,6 +10,7 @@ type ValidateDecoratorConfig = {
 
 type ValidateMetadataStore = Record<string, Record<number, ValidateDecoratorConfig>>
 type DecoratorPropertyKey = string | symbol | undefined
+type ValidateDecoratorShape = { kind?: unknown; schema?: unknown }
 
 function inferValidatorKind(schema: unknown): Tsoa.ExternalValidatorKind | undefined {
   if (!schema || typeof schema !== 'object') {
@@ -41,52 +42,59 @@ function inferValidatorKind(schema: unknown): Tsoa.ExternalValidatorKind | undef
   return undefined
 }
 
-function normalizeValidateDecoratorArgs(args: unknown[]): ValidateDecoratorConfig {
-  if (args.length === 0) {
-    throw new TypeError('@Validate requires a schema argument.')
+function isValidateDecoratorShape(value: unknown): value is ValidateDecoratorShape {
+  return !!value && typeof value === 'object' && 'kind' in value && 'schema' in value
+}
+
+function requireSchemaValue(schema: unknown): unknown {
+  if (schema === undefined) {
+    throw new TypeError('@Validate requires a schema value.')
   }
 
-  if (args.length === 1) {
-    const [value] = args
-    if (value && typeof value === 'object' && 'kind' in (value as Record<string, unknown>) && 'schema' in (value as Record<string, unknown>)) {
-      const { kind, schema } = value as { kind?: unknown; schema?: unknown }
-      if (!isExternalValidatorKind(kind)) {
-        throw new TypeError(`@Validate received unsupported validator kind '${String(kind)}'.`)
-      }
+  return schema
+}
 
-      if (schema === undefined) {
-        throw new TypeError('@Validate requires a schema value.')
-      }
-
-      return { kind, schema }
-    }
-
-    if (isExternalValidatorKind(value)) {
-      throw new TypeError(`@Validate('${value}', schema) requires a schema value.`)
-    }
-
-    const inferredKind = inferValidatorKind(value)
-    if (!inferredKind) {
-      throw new TypeError('@Validate(schema) could not infer the validator kind. Use @Validate(kind, schema) instead.')
-    }
-
-    return { kind: inferredKind, schema: value }
-  }
-
-  if (args.length === 2) {
-    const [kind, schema] = args
+function normalizeSingleValidateDecoratorArg(value: unknown): ValidateDecoratorConfig {
+  if (isValidateDecoratorShape(value)) {
+    const { kind, schema } = value
     if (!isExternalValidatorKind(kind)) {
       throw new TypeError(`@Validate received unsupported validator kind '${String(kind)}'.`)
     }
 
-    if (schema === undefined) {
-      throw new TypeError('@Validate requires a schema value.')
-    }
-
-    return { kind, schema }
+    return { kind, schema: requireSchemaValue(schema) }
   }
 
-  throw new TypeError('@Validate accepts only (schema), (kind, schema), or ({ kind, schema }).')
+  if (isExternalValidatorKind(value)) {
+    throw new TypeError(`@Validate('${value}', schema) requires a schema value.`)
+  }
+
+  const inferredKind = inferValidatorKind(value)
+  if (!inferredKind) {
+    throw new TypeError('@Validate(schema) could not infer the validator kind. Use @Validate(kind, schema) instead.')
+  }
+
+  return { kind: inferredKind, schema: value }
+}
+
+function normalizeKindAndSchemaArgs(kind: unknown, schema: unknown): ValidateDecoratorConfig {
+  if (!isExternalValidatorKind(kind)) {
+    throw new TypeError(`@Validate received unsupported validator kind '${String(kind)}'.`)
+  }
+
+  return { kind, schema: requireSchemaValue(schema) }
+}
+
+function normalizeValidateDecoratorArgs(args: unknown[]): ValidateDecoratorConfig {
+  switch (args.length) {
+    case 0:
+      throw new TypeError('@Validate requires a schema argument.')
+    case 1:
+      return normalizeSingleValidateDecoratorArg(args[0])
+    case 2:
+      return normalizeKindAndSchemaArgs(args[0], args[1])
+    default:
+      throw new TypeError('@Validate accepts only (schema), (kind, schema), or ({ kind, schema }).')
+  }
 }
 
 function isExternalValidatorKind(value: unknown): value is Tsoa.ExternalValidatorKind {
@@ -114,9 +122,9 @@ export function getParameterExternalValidatorMetadata(target: object, propertyKe
 
   while (currentTarget) {
     const store = Reflect.getOwnMetadata(VALIDATE_METADATA_KEY, currentTarget) as ValidateMetadataStore | undefined
-    const propertyStore = store?.[lookupKey]
-    if (propertyStore && propertyStore[parameterIndex]) {
-      return propertyStore[parameterIndex]
+    const parameterMetadata = store?.[lookupKey]?.[parameterIndex]
+    if (parameterMetadata) {
+      return parameterMetadata
     }
 
     currentTarget = Object.getPrototypeOf(currentTarget) as object | null

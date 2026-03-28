@@ -4,6 +4,22 @@ import { Agent } from 'http'
 import { resolve } from 'path'
 import { App } from 'supertest/types'
 
+function parseResponseError(response: { error?: unknown } | undefined): unknown {
+  if (typeof response?.error !== 'string') {
+    return response?.error
+  }
+
+  try {
+    return JSON.parse(response.error)
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return response.error
+    }
+
+    throw error
+  }
+}
+
 export function verifyRequest(app: App, verifyResponse: (err: any, res: request.Response) => any, methodOperation: (request: TestAgent<request.Test>) => request.Test, expectedStatus = 200) {
   return new Promise<void>((resolve, reject) => {
     const attemptRequest = (remainingRetries: number) => {
@@ -20,12 +36,7 @@ export function verifyRequest(app: App, verifyResponse: (err: any, res: request.
             return
           }
 
-          let parsedError: any
-          try {
-            parsedError = typeof res?.error === 'string' ? JSON.parse(res.error) : res?.error
-          } catch (_err) {
-            parsedError = res?.error
-          }
+          const parsedError = parseResponseError(res)
 
           try {
             if (err) {

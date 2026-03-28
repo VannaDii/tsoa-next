@@ -18,13 +18,22 @@ export interface RuntimeSchemaAdapter {
 type ValidationErrorLike = Error & { issues?: unknown[]; details?: unknown[]; inner?: unknown[]; path?: unknown; type?: unknown; failures?: () => Iterable<unknown> }
 type SuperstructModule = { validate: (value: unknown, struct: unknown, options?: unknown) => [unknown, unknown] }
 type IoTsReporterModule = { PathReporter?: { report: (input: unknown) => string[] } }
+type ModuleLoadError = Error & { code?: string }
 
 let superstructModule: SuperstructModule | undefined
+
+function isMissingOptionalModuleError(error: unknown): error is ModuleLoadError {
+  return error instanceof Error && (error as ModuleLoadError).code === 'MODULE_NOT_FOUND'
+}
 
 function loadOptionalModule<T>(moduleName: string): T {
   try {
     return require(moduleName) as T
-  } catch (_error) {
+  } catch (error) {
+    if (!isMissingOptionalModuleError(error)) {
+      throw error
+    }
+
     throw new Error(`External validator '${moduleName}' is not installed. Install it in your application to use @Validate with that schema kind.`)
   }
 }
@@ -94,7 +103,7 @@ const zodAdapter: RuntimeSchemaAdapter = {
   validate(value, schema, context) {
     const zodSchema = schema as { safeParse?: (input: unknown) => { success: boolean; data?: unknown; error?: { issues?: unknown[] } } }
     if (typeof zodSchema.safeParse !== 'function') {
-      throw new Error('Expected a Zod schema with safeParse().')
+      throw new TypeError('Expected a Zod schema with safeParse().')
     }
 
     const result = zodSchema.safeParse(value)
@@ -122,7 +131,7 @@ const joiAdapter: RuntimeSchemaAdapter = {
   validate(value, schema, context) {
     const joiSchema = schema as { validate?: (input: unknown, options?: unknown) => { value: unknown; error?: { details?: unknown[] } } }
     if (typeof joiSchema.validate !== 'function') {
-      throw new Error('Expected a Joi schema with validate().')
+      throw new TypeError('Expected a Joi schema with validate().')
     }
 
     const result = joiSchema.validate(value, { abortEarly: false })
@@ -151,7 +160,7 @@ const yupAdapter: RuntimeSchemaAdapter = {
   validate(value, schema, context) {
     const yupSchema = schema as { validateSync?: (input: unknown, options?: unknown) => unknown }
     if (typeof yupSchema.validateSync !== 'function') {
-      throw new Error('Expected a Yup schema with validateSync().')
+      throw new TypeError('Expected a Yup schema with validateSync().')
     }
 
     try {
@@ -190,7 +199,13 @@ const superstructAdapter: RuntimeSchemaAdapter = {
     const failures = typeof structError.failures === 'function' ? Array.from(structError.failures()) : [structError]
     const issues = failures.map(entry => {
       const failure = entry as { path?: unknown; refinement?: unknown; type?: unknown; message?: unknown; value?: unknown }
-      const code = typeof failure.refinement === 'string' ? failure.refinement : typeof failure.type === 'string' ? failure.type : 'invalid'
+      let code = 'invalid'
+      if (typeof failure.refinement === 'string') {
+        code = failure.refinement
+      } else if (typeof failure.type === 'string') {
+        code = failure.type
+      }
+
       return {
         path: normalizePath(failure.path),
         code,
@@ -207,7 +222,7 @@ const superstructAdapter: RuntimeSchemaAdapter = {
 function getIoTsDecodeResult(schema: unknown, value: unknown) {
   const codec = schema as { decode?: (input: unknown) => unknown }
   if (typeof codec.decode !== 'function') {
-    throw new Error('Expected an io-ts codec with decode().')
+    throw new TypeError('Expected an io-ts codec with decode().')
   }
 
   return codec.decode(value) as { _tag?: string; left?: unknown; right?: unknown }
@@ -231,11 +246,11 @@ const ioTsAdapter: RuntimeSchemaAdapter = {
   kind: 'io-ts',
   validate(value, schema, context) {
     const decoded = getIoTsDecodeResult(schema, value)
-    if (decoded && decoded._tag === 'Right') {
+    if (decoded?._tag === 'Right') {
       return { ok: true, value: decoded.right }
     }
 
-    const validationErrors = (decoded && decoded._tag === 'Left' ? decoded.left : []) as unknown[]
+    const validationErrors = (decoded?._tag === 'Left' ? decoded.left : []) as unknown[]
     const issues = validationErrors.map(entry => {
       const validationError = entry as { context?: Array<{ key?: string; type?: { name?: string } }>; message?: unknown; value?: unknown }
       const contextPath = (validationError.context || []).slice(1).map(item => item.key).filter((segment): segment is string => !!segment)

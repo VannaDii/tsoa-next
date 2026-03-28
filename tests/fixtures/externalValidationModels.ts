@@ -5,7 +5,6 @@ import { array, integer, object, optional, size, string } from 'superstruct'
 import * as yup from 'yup'
 import { z } from 'zod'
 
-export type ExternalPrimitiveAlias = string
 export type ExternalLiteralUnionAlias = 'active' | 'disabled'
 export type ExternalObjectAlias = {
   name: string

@@ -31,6 +31,7 @@ interface Context {
 type DeclarationWithTypeParameters = ts.Declaration & {
   typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration>
 }
+type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 
 const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } =>
   'initializer' in declaration && declaration.initializer !== undefined
@@ -509,78 +510,124 @@ export class TypeResolver {
   }
 
   private resolveTypeReferenceNode(typeNode: ts.TypeReferenceNode, current: MetadataGenerator, context: Context, parentNode?: ts.Node): Tsoa.Type {
-    const { typeName, typeArguments } = typeNode
-
-    const resolvedTypeArguments = typeArguments ? [...typeArguments] : undefined
-    const ioTsUtilityType = this.getIoTsUtilityType(typeName, current.typeChecker)
-
-    if (ioTsUtilityType === 'TypeOf' && resolvedTypeArguments && resolvedTypeArguments.length === 1) {
-      const [codecTypeArgument] = resolvedTypeArguments
-      const codecType = current.typeChecker.getTypeFromTypeNode(codecTypeArgument)
-      const decodedSymbol = current.typeChecker.getPropertyOfType(codecType, '_A')
-      if (decodedSymbol) {
-        const decodedType = current.typeChecker.getTypeOfSymbolAtLocation(decodedSymbol, codecTypeArgument)
-        const decodedNode = current.typeChecker.typeToTypeNode(decodedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
-        if (decodedNode) {
-          return new TypeResolver(decodedNode, current, parentNode, context, decodedType).resolve()
-        }
-      }
-
-      const resolvedType = current.typeChecker.getTypeFromTypeNode(typeNode)
-      const resolvedNode = current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
-      if (resolvedNode && !ts.isTypeReferenceNode(resolvedNode)) {
-        return new TypeResolver(resolvedNode, current, parentNode, context, resolvedType).resolve()
-      }
+    const { typeName } = typeNode
+    const resolvedTypeArguments = typeNode.typeArguments ? [...typeNode.typeArguments] : undefined
+    const ioTsType = this.resolveIoTsUtilityTypeReference(typeNode, current, context, parentNode, resolvedTypeArguments)
+    if (ioTsType) {
+      return ioTsType
     }
 
-    if (ioTsUtilityType === 'Branded' && resolvedTypeArguments && resolvedTypeArguments.length >= 1) {
-      const [valueTypeArgument] = resolvedTypeArguments
-      return new TypeResolver(valueTypeArgument, current, parentNode, context).resolve()
-    }
-
-    if (ioTsUtilityType === 'Brand') {
-      return { dataType: 'any' }
-    }
-
-    if (typeName.kind !== ts.SyntaxKind.Identifier) {
+    if (!ts.isIdentifier(typeName)) {
       return this.getReferenceType(typeNode)
     }
 
-    switch (typeName.text) {
+    const builtinType = this.resolveBuiltinTypeReference(typeName.text, resolvedTypeArguments, current, context, parentNode)
+    if (builtinType) {
+      return builtinType
+    }
+
+    return this.getReferenceType(typeNode)
+  }
+
+  private resolveIoTsUtilityTypeReference(
+    typeNode: ts.TypeReferenceNode,
+    current: MetadataGenerator,
+    context: Context,
+    parentNode: ts.Node | undefined,
+    resolvedTypeArguments: ts.TypeNode[] | undefined,
+  ): Tsoa.Type | undefined {
+    const ioTsUtilityType = this.getIoTsUtilityType(typeNode.typeName, current.typeChecker)
+    if (!ioTsUtilityType) {
+      return undefined
+    }
+
+    switch (ioTsUtilityType) {
+      case 'TypeOf':
+        return this.resolveIoTsDecodedType(typeNode, current, context, parentNode, resolvedTypeArguments)
+      case 'Branded':
+        if (resolvedTypeArguments?.length) {
+          return new TypeResolver(resolvedTypeArguments[0], current, parentNode, context).resolve()
+        }
+        return undefined
+      case 'Brand':
+        return { dataType: 'any' }
+      default:
+        return undefined
+    }
+  }
+
+  private resolveIoTsDecodedType(
+    typeNode: ts.TypeReferenceNode,
+    current: MetadataGenerator,
+    context: Context,
+    parentNode: ts.Node | undefined,
+    resolvedTypeArguments: ts.TypeNode[] | undefined,
+  ): Tsoa.Type | undefined {
+    if (resolvedTypeArguments?.length !== 1) {
+      return undefined
+    }
+
+    const [codecTypeArgument] = resolvedTypeArguments
+    const codecType = current.typeChecker.getTypeFromTypeNode(codecTypeArgument)
+    const decodedSymbol = current.typeChecker.getPropertyOfType(codecType, '_A')
+    if (decodedSymbol) {
+      const decodedType = current.typeChecker.getTypeOfSymbolAtLocation(decodedSymbol, codecTypeArgument)
+      const decodedNode = current.typeChecker.typeToTypeNode(decodedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+      if (decodedNode) {
+        return new TypeResolver(decodedNode, current, parentNode, context, decodedType).resolve()
+      }
+    }
+
+    const resolvedType = current.typeChecker.getTypeFromTypeNode(typeNode)
+    const resolvedNode = current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+    if (resolvedNode && !ts.isTypeReferenceNode(resolvedNode)) {
+      return new TypeResolver(resolvedNode, current, parentNode, context, resolvedType).resolve()
+    }
+
+    return undefined
+  }
+
+  private resolveBuiltinTypeReference(
+    typeName: string,
+    typeArguments: ts.TypeNode[] | undefined,
+    current: MetadataGenerator,
+    context: Context,
+    parentNode: ts.Node | undefined,
+  ): Tsoa.Type | undefined {
+    switch (typeName) {
       case 'Date':
         return new DateTransformer().transform(parentNode)
       case 'Buffer':
       case 'Readable':
         return { dataType: 'buffer' }
       case 'Array':
-        if (typeArguments && typeArguments.length === 1) {
+        if (typeArguments?.length === 1) {
           return {
             dataType: 'array',
             elementType: new TypeResolver(typeArguments[0], current, parentNode, context).resolve(),
           }
         }
-        break
+        return undefined
       case 'Promise':
-        if (typeArguments && typeArguments.length === 1) {
+        if (typeArguments?.length === 1) {
           return new TypeResolver(typeArguments[0], current, parentNode, context).resolve()
         }
-        break
+        return undefined
       case 'String':
         return { dataType: 'string' }
       default:
-        if (context[typeName.text]) {
-          return new TypeResolver(context[typeName.text].type, current, parentNode, context).resolve()
+        if (context[typeName]) {
+          return new TypeResolver(context[typeName].type, current, parentNode, context).resolve()
         }
+        return undefined
     }
-
-    return this.getReferenceType(typeNode)
   }
 
   private isIoTsBrandMarker(typeNode: ts.TypeNode, typeChecker: ts.TypeChecker): boolean {
     return ts.isTypeReferenceNode(typeNode) && this.getIoTsUtilityType(typeNode.typeName, typeChecker) === 'Brand'
   }
 
-  private getIoTsUtilityType(typeName: ts.EntityName, typeChecker: ts.TypeChecker): 'TypeOf' | 'Branded' | 'Brand' | undefined {
+  private getIoTsUtilityType(typeName: ts.EntityName, typeChecker: ts.TypeChecker): IoTsUtilityType | undefined {
     const symbolNode = ts.isQualifiedName(typeName) ? typeName.right : typeName
     const symbolName = symbolNode.text
     if (symbolName !== 'TypeOf' && symbolName !== 'Branded' && symbolName !== 'Brand') {
@@ -593,7 +640,7 @@ export class TypeResolver {
 
     const symbol = typeChecker.getSymbolAtLocation(symbolNode)
     if (!symbol) {
-      return symbolName
+      return undefined
     }
 
     return this.getIoTsUtilityTypeFromSymbol(symbol, typeChecker)
@@ -613,7 +660,7 @@ export class TypeResolver {
     symbol: ts.Symbol | undefined,
     typeChecker: ts.TypeChecker,
     visited: Set<ts.Symbol> = new Set(),
-  ): 'TypeOf' | 'Branded' | 'Brand' | undefined {
+  ): IoTsUtilityType | undefined {
     if (!symbol || visited.has(symbol)) {
       return undefined
     }
@@ -659,7 +706,7 @@ export class TypeResolver {
         return true
       }
 
-      const fileName = declaration.getSourceFile().fileName.replace(/\\/g, '/')
+      const fileName = declaration.getSourceFile().fileName.replaceAll('\\', '/')
       if (fileName.includes(`/node_modules/${moduleName}/`)) {
         return true
       }

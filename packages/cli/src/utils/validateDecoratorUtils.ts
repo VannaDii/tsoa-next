@@ -17,6 +17,7 @@ type ValidateDecoratorParseResult = {
   validationStrategy: Tsoa.ValidationStrategy
   externalValidator: Tsoa.ExternalValidatorDescriptor
 }
+type ValidateSchemaProperty = ts.PropertyAssignment | ts.ShorthandPropertyAssignment
 
 function isExternalValidatorKind(value: unknown): value is Tsoa.ExternalValidatorKind {
   return value === 'zod' || value === 'joi' || value === 'yup' || value === 'superstruct' || value === 'io-ts'
@@ -54,6 +55,44 @@ function getModuleKindFromImportDeclaration(declaration: ts.Declaration): Tsoa.E
   return undefined
 }
 
+function getSymbolDeclarations(symbol: ts.Symbol): ts.Declaration[] {
+  return symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
+}
+
+function inferValidatorKindFromDeclaration(
+  declaration: ts.Declaration,
+  typeChecker: ts.TypeChecker,
+  visited: Set<ts.Symbol>,
+): Tsoa.ExternalValidatorKind | undefined {
+  const fromImport = getModuleKindFromImportDeclaration(declaration)
+  if (fromImport) {
+    return fromImport
+  }
+
+  if (ts.isVariableDeclaration(declaration) || ts.isPropertyAssignment(declaration) || ts.isBindingElement(declaration) || ts.isParameter(declaration)) {
+    if (declaration.initializer) {
+      return inferValidatorKindFromExpression(declaration.initializer, typeChecker, visited)
+    }
+  }
+
+  return undefined
+}
+
+function inferValidatorKindFromDeclarations(
+  declarations: ts.Declaration[],
+  typeChecker: ts.TypeChecker,
+  visited: Set<ts.Symbol>,
+): Tsoa.ExternalValidatorKind | undefined {
+  for (const declaration of declarations) {
+    const inferredKind = inferValidatorKindFromDeclaration(declaration, typeChecker, visited)
+    if (inferredKind) {
+      return inferredKind
+    }
+  }
+
+  return undefined
+}
+
 function inferValidatorKindFromSymbol(symbol: ts.Symbol | undefined, typeChecker: ts.TypeChecker, visited: Set<ts.Symbol>): Tsoa.ExternalValidatorKind | undefined {
   if (!symbol || visited.has(symbol)) {
     return undefined
@@ -61,53 +100,21 @@ function inferValidatorKindFromSymbol(symbol: ts.Symbol | undefined, typeChecker
 
   visited.add(symbol)
 
-  const symbolDeclarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
-  for (const declaration of symbolDeclarations) {
-    const fromImport = getModuleKindFromImportDeclaration(declaration)
-    if (fromImport) {
-      return fromImport
-    }
+  const directKind = inferValidatorKindFromDeclarations(getSymbolDeclarations(symbol), typeChecker, visited)
+  if (directKind) {
+    return directKind
   }
 
-  const isAliasSymbol = (symbol.flags & ts.SymbolFlags.Alias) !== 0
+  const isAliasSymbol = Boolean(symbol.flags & ts.SymbolFlags.Alias)
   const resolvedSymbol = isAliasSymbol ? typeChecker.getAliasedSymbol(symbol) : symbol
   if (resolvedSymbol !== symbol) {
-    const direct = inferValidatorKindFromSymbol(resolvedSymbol, typeChecker, visited)
-    if (direct) {
-      return direct
+    const aliasedKind = inferValidatorKindFromSymbol(resolvedSymbol, typeChecker, visited)
+    if (aliasedKind) {
+      return aliasedKind
     }
   }
 
-  const declarations = resolvedSymbol.declarations || (resolvedSymbol.valueDeclaration ? [resolvedSymbol.valueDeclaration] : [])
-  for (const declaration of declarations) {
-    const fromImport = getModuleKindFromImportDeclaration(declaration)
-    if (fromImport) {
-      return fromImport
-    }
-
-    if (ts.isVariableDeclaration(declaration) && declaration.initializer) {
-      const fromInitializer = inferValidatorKindFromExpression(declaration.initializer, typeChecker, visited)
-      if (fromInitializer) {
-        return fromInitializer
-      }
-    }
-
-    if ((ts.isPropertyAssignment(declaration) || ts.isBindingElement(declaration)) && declaration.initializer) {
-      const fromInitializer = inferValidatorKindFromExpression(declaration.initializer, typeChecker, visited)
-      if (fromInitializer) {
-        return fromInitializer
-      }
-    }
-
-    if (ts.isParameter(declaration) && declaration.initializer) {
-      const fromInitializer = inferValidatorKindFromExpression(declaration.initializer, typeChecker, visited)
-      if (fromInitializer) {
-        return fromInitializer
-      }
-    }
-  }
-
-  return undefined
+  return inferValidatorKindFromDeclarations(getSymbolDeclarations(resolvedSymbol), typeChecker, visited)
 }
 
 function inferValidatorKindFromExpression(expression: ts.Expression, typeChecker: ts.TypeChecker, visited: Set<ts.Symbol> = new Set()): Tsoa.ExternalValidatorKind | undefined {
@@ -153,15 +160,8 @@ function parseValidateKindAndSchemaArgument(
   if (args.length === 1) {
     const [arg] = args
     if (ts.isObjectLiteralExpression(arg)) {
-      const kindProperty = arg.properties.find(
-        property => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'kind',
-      ) as ts.PropertyAssignment | undefined
-      const schemaProperty = arg.properties.find(
-        property =>
-          (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
-          ts.isIdentifier(property.name) &&
-          property.name.text === 'schema',
-      ) as ts.PropertyAssignment | ts.ShorthandPropertyAssignment | undefined
+      const kindProperty = getValidateKindProperty(arg)
+      const schemaProperty = getValidateSchemaProperty(arg)
 
       if (!kindProperty || !schemaProperty || !ts.isStringLiteral(kindProperty.initializer) || !isExternalValidatorKind(kindProperty.initializer.text)) {
         throw new GenerateMetadataError('@Validate({ kind, schema }) requires a supported string kind and a schema property.', arg)
@@ -201,6 +201,22 @@ function parseValidateKindAndSchemaArgument(
   }
 
   throw new GenerateMetadataError('@Validate accepts only (schema), (kind, schema), or ({ kind, schema }).', expression)
+}
+
+function getValidateKindProperty(objectLiteral: ts.ObjectLiteralExpression): ts.PropertyAssignment | undefined {
+  return objectLiteral.properties.find(
+    (property): property is ts.PropertyAssignment =>
+      ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'kind',
+  )
+}
+
+function getValidateSchemaProperty(objectLiteral: ts.ObjectLiteralExpression): ValidateSchemaProperty | undefined {
+  return objectLiteral.properties.find(
+    (property): property is ValidateSchemaProperty =>
+      (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
+      ts.isIdentifier(property.name) &&
+      property.name.text === 'schema',
+  )
 }
 
 export function getParameterExternalValidator(

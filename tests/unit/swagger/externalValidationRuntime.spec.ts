@@ -140,7 +140,7 @@ describe('External validation runtime', () => {
   })
 
   it('falls back to a generic io-ts summary when PathReporter is unavailable', () => {
-    const moduleLoader = require('module') as {
+    const moduleLoader = require('node:module') as {
       prototype: { require: (id: string) => unknown }
     }
     const originalRequire = moduleLoader.prototype.require
