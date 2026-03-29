@@ -449,14 +449,17 @@ export class SpecGenerator3 extends SpecGenerator {
 
   protected buildMediaType(controllerName: string, method: Tsoa.Method, parameter: Tsoa.Parameter): Swagger.MediaType {
     const validators = this.getSchemaValidators(parameter.validators) as Partial<Swagger.Schema3>
-
-    const mediaType: Swagger.MediaType = {
-      schema: {
-        ...(this.getSwaggerType(parameter.type, this.config.useTitleTagsForInlineObjects ? this.getOperationId(controllerName, method) + 'RequestBody' : undefined) as Swagger.Schema3),
+    const schema = this.mergeSchemaExtensions(
+      this.getSwaggerType(parameter.type, this.config.useTitleTagsForInlineObjects ? this.getOperationId(controllerName, method) + 'RequestBody' : undefined) as Swagger.Schema3,
+      {
         ...validators,
         ...(parameter.description && { description: parameter.description }),
         ...this.getExternalValidatorExtension(parameter),
       },
+    )
+
+    const mediaType: Swagger.MediaType = {
+      schema,
     }
 
     const parameterExamples = parameter.example
@@ -508,7 +511,7 @@ export class SpecGenerator3 extends SpecGenerator {
     }
 
     if (parameterType.$ref) {
-      parameter.schema = parameterType as Swagger.Schema3
+      parameter.schema = this.mergeSchemaExtensions(parameterType as Swagger.Schema3, this.getExternalValidatorExtension(source))
       return Object.assign(parameter, this.buildExamples(source))
     }
 
@@ -529,6 +532,22 @@ export class SpecGenerator3 extends SpecGenerator {
     parameter.schema = Object.assign({}, parameter.schema, validatorObjs)
 
     return Object.assign(parameter, this.buildExamples(source))
+  }
+
+  private mergeSchemaExtensions(schema: Swagger.Schema3, extensions: Partial<Swagger.Schema3>): Swagger.Schema3 {
+    const filteredExtensions = Object.fromEntries(Object.entries(extensions).filter(([, value]) => value !== undefined)) as Partial<Swagger.Schema3>
+
+    if (!schema.$ref || Object.keys(filteredExtensions).length === 0) {
+      return {
+        ...schema,
+        ...filteredExtensions,
+      }
+    }
+
+    return {
+      allOf: [schema],
+      ...filteredExtensions,
+    }
   }
 
   protected buildExamples(source: Pick<Tsoa.Parameter, 'example' | 'exampleLabels'>): {

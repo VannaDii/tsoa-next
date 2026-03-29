@@ -98,14 +98,10 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
           const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array && p.array.dataType === 'file'))
           if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
             const requestFiles = request.files as { [fileName: string]: Express.Multer.File[] } | undefined
-
-            const fileArgs = this.validationService.ValidateParam(param, requestFiles?.[name], name, fieldErrors, false, undefined, metadata)
+            const fileValue = param.dataType === 'array' ? requestFiles?.[name] : requestFiles?.[name]?.[0]
+            const fileArgs = this.validationService.ValidateParam(param, fileValue, name, fieldErrors, false, undefined, metadata)
             if (param.dataType === 'array') {
               return fileArgs
-            }
-            if (Array.isArray(fileArgs) && fileArgs.length === 1) {
-              const firstFile: unknown = fileArgs[0]
-              return firstFile
             }
             return fileArgs
           }

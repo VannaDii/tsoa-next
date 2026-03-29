@@ -265,10 +265,11 @@ export class ValidationService {
   private validateExternal(name: string, rawValue: unknown, fieldErrors: FieldErrors, property: TsoaRoute.PropertySchema, parent: string, metadata?: ParameterValidationMetadata): unknown {
     const value = rawValue === undefined && property.default !== undefined ? property.default : rawValue
     const runtimeMetadata = this.getRuntimeExternalValidatorMetadata(metadata, property)
+    const fieldPath = parent + name
 
     if (!runtimeMetadata) {
-      fieldErrors[parent + name] = {
-        message: `Missing runtime schema metadata for external validator '${property.externalValidator?.kind || 'unknown'}'.`,
+      fieldErrors[fieldPath] = {
+        message: `Missing runtime schema metadata for external validator '${property.externalValidator?.kind || 'unknown'}' on '${fieldPath || '(anonymous parameter)'}'. Ensure the controller module is imported so decorators run, and ensure custom templates pass controllerClass, methodName, and parameterIndex into validation.`,
         value,
       }
       return undefined
@@ -278,15 +279,15 @@ export class ValidationService {
     const runtimeKind = runtimeMetadata.kind
 
     if (declaredKind && declaredKind !== runtimeKind) {
-      fieldErrors[parent + name] = {
-        message: `External validator kind mismatch for '${parent + name}'. Route schema expects '${declaredKind}' but runtime metadata provided '${runtimeKind}'.`,
+      fieldErrors[fieldPath] = {
+        message: `External validator kind mismatch for '${fieldPath}'. Route schema expects '${declaredKind}' but runtime metadata provided '${runtimeKind}'.`,
         value,
       }
       return undefined
     }
 
     const kindToUse = declaredKind || runtimeKind
-    const result = validateExternalSchema(kindToUse, runtimeMetadata.schema, value, this.config.validation)
+    const result = validateExternalSchema(kindToUse, runtimeMetadata.schema, value, this.config.validation ?? {})
     if (result.ok) {
       return result.value
     }

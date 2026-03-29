@@ -9,7 +9,7 @@
     "check:pre-push": "node ./scripts/check-pre-push.cjs",
     "check:standard": "npm run build && npm run lint && npm run test",
     "clean": "turbo run clean --output-logs=full",
-    "coverage": "rimraf coverage && npm --prefix tests run pretest && c8 npm --prefix tests run test:ci",
+    "coverage": "node ./scripts/run-coverage.cjs",
     "docs:build": "vitepress build site/guide-docs",
     "docs:dev": "vitepress dev site/guide-docs",
     "docs:preview": "vitepress preview site/guide-docs",

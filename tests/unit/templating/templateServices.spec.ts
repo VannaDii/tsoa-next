@@ -161,7 +161,7 @@ describe('Template services', () => {
         ['x-token', 'secret'],
         ['payload', request.body],
         ['title', 'tsoa'],
-        ['upload', [uploadedFile]],
+        ['upload', uploadedFile],
         ['notes', 'body-field'],
       ])
       expect(validationCalls.find(call => call.name === 'title')?.parent).to.equal('body.')
@@ -624,6 +624,7 @@ describe('Template services', () => {
       expect(values[7]).to.equal('koa-body')
       expect(values[8]).to.deep.equal({ originalname: 'avatar.png' })
       expect(values[9]).to.equal('body-field')
+      expect(validationCalls.find(call => call.name === 'upload')?.value).to.deep.equal({ originalname: 'avatar.png' })
       expect(validationCalls.find(call => call.name === 'title')?.parent).to.equal('body.')
 
       const responder = values[10] as (status: number, data: unknown, headers: Record<string, string>) => Promise<void>

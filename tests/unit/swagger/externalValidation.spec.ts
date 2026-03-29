@@ -83,34 +83,26 @@ describe('External validation metadata', function () {
     expect(spec2.paths['/ExternalValidation/io-ts']?.post?.parameters?.[0]).to.have.nested.property('schema.x-schema-validator', 'io-ts')
 
     expect(spec3.paths['/ExternalValidation/zod']?.post?.requestBody?.content?.['application/json']?.schema).to.deep.equal({
-      $ref: '#/components/schemas/ExternalObjectAlias',
+      allOf: [{ $ref: '#/components/schemas/ExternalObjectAlias' }],
       'x-schema-validator': 'zod',
     })
     expect(spec3.paths['/ExternalValidation/io-ts']?.post?.requestBody?.content?.['application/json']?.schema).to.deep.equal({
-      $ref: '#/components/schemas/Wager',
+      allOf: [{ $ref: '#/components/schemas/Wager' }],
       'x-schema-validator': 'io-ts',
     })
   })
 
   it('fails clearly for invalid validate decorator forms and unsupported targets', () => {
-    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateKindController.ts').Generate()).to.throw(
-      '@Validate(kind, schema) requires a supported string kind and schema argument.',
-    )
-    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateMissingSchemaController.ts').Generate()).to.throw(
-      "@Validate('zod', schema) requires a schema argument.",
-    )
+    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateKindController.ts').Generate()).to.throw('@Validate(kind, schema) requires a supported string kind and schema argument.')
+    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateMissingSchemaController.ts').Generate()).to.throw("@Validate('zod', schema) requires a schema argument.")
     expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateObjectConfigController.ts').Generate()).to.throw(
       '@Validate({ kind, schema }) requires a supported string kind and a schema property.',
     )
     expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateInferenceController.ts').Generate()).to.throw(
       '@Validate(schema) could not infer the validator kind. Use @Validate(kind, schema) instead.',
     )
-    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateTargetController.ts').Generate()).to.throw(
-      '@Validate is currently supported only on controller method parameters.',
-    )
-    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateRequestParamController.ts').Generate()).to.throw(
-      "@Validate is not supported on 'request' parameters in this release.",
-    )
+    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateTargetController.ts').Generate()).to.throw('@Validate is currently supported only on controller method parameters.')
+    expect(() => new MetadataGenerator('./fixtures/controllers/invalidValidateRequestParamController.ts').Generate()).to.throw("@Validate is not supported on 'request' parameters in this release.")
   })
 
   it('infers validator kinds for namespace-imported schemas used in bare @Validate(schema) form', () => {

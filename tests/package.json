@@ -9,7 +9,7 @@
     "pretest": "npm run clean && npm run prepare-test && npm run typecheck",
     "test": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\"",
     "test:ci": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\" --parallel --timeout 20000",
-    "test:coverage": "npm run test:ci",
+    "test:long": "npm run test:ci",
     "typecheck": "tsc"
   },
   "keywords": [

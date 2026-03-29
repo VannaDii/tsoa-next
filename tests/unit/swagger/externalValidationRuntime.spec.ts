@@ -1,3 +1,4 @@
+import 'reflect-metadata'
 import { expect } from 'chai'
 import 'mocha'
 import { TsoaRoute, ValidationService } from '@tsoa-next/runtime'
@@ -5,14 +6,7 @@ import * as runtimeSource from '../../../packages/runtime/src'
 import { Validate as sourceValidate, getParameterExternalValidatorMetadata } from '../../../packages/runtime/src/decorators/validate'
 import { validateExternalSchema as sourceValidateExternalSchema } from '../../../packages/runtime/src/routeGeneration/externalValidation'
 import { z } from 'zod'
-import {
-  JoiBodySchema,
-  SuperstructBodySchema,
-  WagerCodec,
-  YupBodySchema,
-  ZodAuthoritativeSchema,
-  ZodBodySchema,
-} from '../../fixtures/externalValidationModels'
+import { JoiBodySchema, SuperstructBodySchema, WagerCodec, YupBodySchema, ZodAuthoritativeSchema, ZodBodySchema } from '../../fixtures/externalValidationModels'
 
 describe('External validation runtime', () => {
   const validationConfig = {
@@ -362,12 +356,15 @@ describe('External validation runtime', () => {
       }
     }
 
-    const service = new ValidationService({}, {
-      ...validationConfig,
-      validation: {
-        translate: key => `translated:${key}`,
+    const service = new ValidationService(
+      {},
+      {
+        ...validationConfig,
+        validation: {
+          translate: key => `translated:${key}`,
+        },
       },
-    })
+    )
     const fieldErrors: Record<string, { message: string; value: unknown }> = {}
     const schema: TsoaRoute.PropertySchema = {
       dataType: 'string',
@@ -443,5 +440,24 @@ describe('External validation runtime', () => {
 
     expect(result).to.equal('42')
     expect(fieldErrors).to.deep.equal({})
+  })
+
+  it('includes actionable context when runtime external validator metadata is missing', () => {
+    const service = new ValidationService({}, validationConfig)
+    const fieldErrors: Record<string, { message: string; value: unknown }> = {}
+    const schema: TsoaRoute.PropertySchema = {
+      dataType: 'string',
+      required: true,
+      validationStrategy: 'external',
+      externalValidator: {
+        kind: 'zod',
+        strategy: 'external',
+      },
+    }
+
+    service.ValidateParam(schema, 'payload', 'payload', fieldErrors, true, 'body.')
+
+    expect(fieldErrors['body.payload'].message).to.contain("Missing runtime schema metadata for external validator 'zod' on 'body.payload'")
+    expect(fieldErrors['body.payload'].message).to.contain('Ensure the controller module is imported so decorators run')
   })
 })

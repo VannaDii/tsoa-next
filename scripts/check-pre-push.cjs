@@ -29,7 +29,7 @@ const GLOBAL_TEST_PATHS = new Set([
   'turbo.json',
 ])
 const TRUSTED_GIT_EXECUTABLES = ['/opt/homebrew/bin/git', '/usr/local/bin/git', '/usr/bin/git']
-const GIT_EXECUTABLE = resolveFirstExistingPath(TRUSTED_GIT_EXECUTABLES)
+const GIT_EXECUTABLE = resolveGitExecutable()
 const NPM_CLI = resolveNpmCliPath()
 
 const repoRoot = execFileSync(GIT_EXECUTABLE, ['rev-parse', '--show-toplevel'], {
@@ -230,6 +230,31 @@ function resolveFirstExistingPath(candidates) {
   }
 
   return executable
+}
+
+function resolveGitExecutable() {
+  const envOverride = process.env.TSOA_GIT_EXECUTABLE
+  if (envOverride) {
+    return envOverride
+  }
+
+  const trustedExecutable = TRUSTED_GIT_EXECUTABLES.find(candidate => existsSync(candidate))
+  if (trustedExecutable) {
+    return trustedExecutable
+  }
+
+  const pathResolvedGit = spawnSync('git', ['--version'], {
+    cwd: process.cwd(),
+    stdio: 'ignore',
+  })
+  if (pathResolvedGit.status === 0) {
+    return 'git'
+  }
+
+  throw new Error(
+    `Unable to locate Git. Checked trusted paths (${TRUSTED_GIT_EXECUTABLES.join(', ')}) and then tried resolving 'git' from PATH. ` +
+      `Set TSOA_GIT_EXECUTABLE to override the executable path.`,
+  )
 }
 
 function resolveNpmCliPath() {
