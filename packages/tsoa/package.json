@@ -28,7 +28,7 @@
     "swagger",
     "typescript"
   ],
-  "author": "Luke Autry <lukeautry@gmail.com> (http://www.lukeautry.com)",
+  "author": "Vanna DiCatania <vanna@dicatania.me> (http://www.dicatania.me)",
   "license": "MIT",
   "dependencies": {
     "@tsoa-next/cli": "7.2.1",

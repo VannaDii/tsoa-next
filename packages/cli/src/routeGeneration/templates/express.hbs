@@ -1,10 +1,9 @@
 /* tslint:disable */
 /* eslint-disable */
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/tsoa-next/tsoa-next
 import type { AdditionalProps, Tsoa, TsoaRoute } from '@tsoa-next/runtime';
 import {  fetchMiddlewares, ExpressTemplateService } from '@tsoa-next/runtime';
 {{#each controllers}}
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { {{name}} } from '{{modulePath}}';
 {{/each}}
 {{#if authenticationModule}}
@@ -29,9 +28,6 @@ const multer = require('multer');
 const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, securityName: string, scopes?: string[], res?: ExResponse) => Promise<any>;
 {{/if}}
 
-
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
 const models: TsoaRoute.Models = {
     {{#each models}}
     "{{@key}}": {
@@ -53,7 +49,6 @@ const models: TsoaRoute.Models = {
         "type": {{{json type}}},
         {{/if}}
     },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     {{/each}}
 };
 
@@ -65,7 +60,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
 
     // ###########################################################################################################
     //  NOTE: If you do not see routes for all of your controllers in this file, then you might not have informed tsoa of where to look
-    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
+    //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/tsoa-next/tsoa-next
     // ###########################################################################################################
 
     {{#if useFileUploads}}
@@ -77,7 +72,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
     };
     const templateService = new ExpressTemplateService(models, additionalProps);
 
-    
+
     {{#each controllers}}
     {{#each actions}}
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
@@ -106,8 +101,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
 
             async function {{../name}}_{{name}}(request: ExRequest, response: ExResponse, next: any) {
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
             let validatedArgs: any[] = [];
             try {
                 validatedArgs = templateService.getValidatedArgs({ args: args{{../name}}_{{name}}, controllerClass: {{../name}}, methodName: '{{name}}', request, response });
@@ -135,20 +128,13 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 return next(err);
             }
         });
-        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     {{/each}}
     {{/each}}
-
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
     {{#if useSecurity}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {
         return async function runAuthenticationMiddleware(request: any, response: any, next: any) {
-
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             // keep track of failed auth attempts so we can hand back the most
             // recent one.  This behavior was previously existing so preserving it
@@ -171,7 +157,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                         );
                     }
 
-                    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
                     secMethodOrPromises.push(Promise.all(secMethodAndPromises)
                         .then(users => { return users[0]; }));
@@ -185,7 +171,7 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 }
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 
             try {
                 request['user'] = await Promise.any(secMethodOrPromises);
@@ -209,12 +195,12 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
                 next(error);
             }
 
-            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
         }
     }
     {{/if}}
 
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
 }
 
-// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
