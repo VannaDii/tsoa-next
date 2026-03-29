@@ -66,6 +66,15 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         with:
           args: >
+            -Dsonar.projectKey=tsoa-next_tsoa-next
+            -Dsonar.organization=tsoa-next
+            -Dsonar.projectName=tsoa-next
+            -Dsonar.host.url=https://sonarcloud.io
+            -Dsonar.sources=packages/cli/src,packages/runtime/src,packages/tsoa/src
+            -Dsonar.tests=tests
+            -Dsonar.exclusions=**/*.d.ts,**/dist/**,**/fixtures/**,coverage/**,site/**
+            -Dsonar.test.inclusions=tests/**/*.spec.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.qualitygate.wait=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
