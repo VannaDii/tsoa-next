@@ -39,7 +39,7 @@ const repoRoot = execFileSync(GIT_EXECUTABLE, ['rev-parse', '--show-toplevel'], 
 }).trim()
 const hookArgs = process.argv.slice(2)
 const dryRun = hookArgs.includes('--dry-run')
-const [remoteName = 'origin'] = hookArgs.filter(arg => arg !== '--dry-run')
+const remoteName = hookArgs.find(arg => arg !== '--dry-run') || 'origin'
 const stdin = process.stdin.isTTY ? '' : readStdin()
 
 const pushSpecs = parsePushSpecs(stdin)
@@ -97,7 +97,7 @@ function collectChangedFilesFromPushSpecs(pushSpecs, remote) {
     }
   }
 
-  return Array.from(files).sort()
+  return Array.from(files).sort(comparePaths)
 }
 
 function collectChangedFilesFromFallback(remote) {
@@ -148,49 +148,12 @@ function getAffectedTests(files) {
   const affected = new Set()
 
   for (const file of files) {
-    if (NON_TEST_PATH_PREFIXES.some(prefix => file.startsWith(prefix))) {
-      continue
-    }
-
-    if (file.startsWith('tests/esm/')) {
-      affected.add('tsoa-tests-esm')
-      continue
-    }
-
-    if (file.startsWith('tests/')) {
-      affected.add('tsoa-tests')
-      continue
-    }
-
-    if (file.startsWith('packages/cli/') || file.startsWith('packages/runtime/') || file.startsWith('packages/tsoa/')) {
-      affected.add('tsoa-tests')
-      affected.add('tsoa-tests-esm')
-      continue
-    }
-
-    if (file.startsWith('scripts/') || file.startsWith('.husky/')) {
-      affected.add('tsoa-tests')
-      affected.add('tsoa-tests-esm')
-      continue
-    }
-
-    if (GLOBAL_TEST_PATHS.has(file)) {
-      affected.add('tsoa-tests')
-      affected.add('tsoa-tests-esm')
-      continue
-    }
-
-    if (!file.includes('/') && NON_TEST_ROOT_FILES.has(file)) {
-      continue
-    }
-
-    if (!file.includes('/')) {
-      affected.add('tsoa-tests')
-      affected.add('tsoa-tests-esm')
+    for (const workspace of getAffectedTestWorkspacesForFile(file)) {
+      affected.add(workspace)
     }
   }
 
-  return Array.from(affected)
+  return Array.from(affected).sort(comparePaths)
 }
 
 function toTurboFilters(workspaces) {
@@ -222,6 +185,42 @@ function tryRunGit(args) {
   } catch {
     return undefined
   }
+}
+
+function getAffectedTestWorkspacesForFile(file) {
+  if (NON_TEST_PATH_PREFIXES.some(prefix => file.startsWith(prefix))) {
+    return []
+  }
+
+  if (file.startsWith('tests/esm/')) {
+    return ['tsoa-tests-esm']
+  }
+
+  if (file.startsWith('tests/')) {
+    return ['tsoa-tests']
+  }
+
+  if (startsWithAny(file, ['packages/cli/', 'packages/runtime/', 'packages/tsoa/', 'scripts/', '.husky/'])) {
+    return ['tsoa-tests', 'tsoa-tests-esm']
+  }
+
+  if (GLOBAL_TEST_PATHS.has(file)) {
+    return ['tsoa-tests', 'tsoa-tests-esm']
+  }
+
+  if (!file.includes('/')) {
+    return NON_TEST_ROOT_FILES.has(file) ? [] : ['tsoa-tests', 'tsoa-tests-esm']
+  }
+
+  return []
+}
+
+function startsWithAny(value, prefixes) {
+  return prefixes.some(prefix => value.startsWith(prefix))
+}
+
+function comparePaths(left, right) {
+  return left.localeCompare(right)
 }
 
 function resolveFirstExistingPath(candidates) {

@@ -12,7 +12,7 @@ const config: AdditionalProps = {
   bodyCoercion: true,
 }
 
-const asParam = (param: Partial<TsoaRoute.ParameterSchema>) => param as TsoaRoute.ParameterSchema
+const asParam = (param: TsoaRoute.ParameterSchema) => param
 const createThrownError = (message: string, properties: Record<string, unknown>) => Object.assign(new Error(message), properties)
 
 describe('Template services', () => {
@@ -365,16 +365,12 @@ describe('Template services', () => {
           throw boomError
         }
       }
-      const boomService = new HapiTemplateService(
-        {},
-        config,
-        {
-          boomify() {
-            throw new Error('boomify should not run for Boom errors')
-          },
-          isBoom: () => true,
-        } as never,
-      )
+      const boomService = new HapiTemplateService({}, config, {
+        boomify() {
+          throw new Error('boomify should not run for Boom errors')
+        },
+        isBoom: () => true,
+      } as never)
       try {
         await boomService.apiHandler({
           methodName: 'submit',

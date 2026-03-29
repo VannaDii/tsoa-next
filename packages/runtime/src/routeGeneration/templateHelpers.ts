@@ -24,6 +24,17 @@ type ValidateNestedObjectLiteralOptions = {
   metadata?: ParameterValidationMetadata
 }
 
+type ValidateNestedObjectLiteralTupleArgs = [
+  string,
+  unknown,
+  FieldErrors,
+  boolean,
+  { [name: string]: TsoaRoute.PropertySchema } | undefined,
+  TsoaRoute.PropertySchema | boolean | undefined,
+  string?,
+  ParameterValidationMetadata?,
+]
+
 type ValidateArrayOptions = {
   name: string
   value: unknown
@@ -34,6 +45,8 @@ type ValidateArrayOptions = {
   parent: string
   metadata?: ParameterValidationMetadata
 }
+
+type ValidateArrayTupleArgs = [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema?, ArrayValidator?, string?, ParameterValidationMetadata?]
 
 // for backwards compatibility with custom templates
 export function ValidateParam<TValue>(
@@ -311,7 +324,7 @@ export class ValidationService {
 
     for (const issue of failure.issues) {
       const baseFieldPath = parent + name
-      const fieldPath = issue.path ? (baseFieldPath ? `${baseFieldPath}.${issue.path}` : issue.path) : baseFieldPath
+      const fieldPath = issue.path ? this.buildIssueFieldPath(baseFieldPath, issue.path) : baseFieldPath
       if (!fieldErrors[fieldPath]) {
         fieldErrors[fieldPath] = {
           message: issue.message || failure.summaryMessage,
@@ -325,11 +338,12 @@ export class ValidationService {
     return !isBodyParam || this.config.bodyCoercion || typeof value === type
   }
 
-  public validateNestedObjectLiteral(
-    ...args:
-      | [ValidateNestedObjectLiteralOptions]
-      | [string, unknown, FieldErrors, boolean, { [name: string]: TsoaRoute.PropertySchema } | undefined, TsoaRoute.PropertySchema | boolean | undefined, string, ParameterValidationMetadata?]
-  ) {
+  public validateNestedObjectLiteral(...args: [ValidateNestedObjectLiteralOptions]): unknown
+  /**
+   * @deprecated Use the object overload instead.
+   */
+  public validateNestedObjectLiteral(...args: ValidateNestedObjectLiteralTupleArgs): unknown
+  public validateNestedObjectLiteral(...args: [ValidateNestedObjectLiteralOptions] | ValidateNestedObjectLiteralTupleArgs) {
     const { name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent, metadata } = this.normalizeValidateNestedObjectLiteralArgs(args)
     if (!this.isRecord(value)) {
       fieldErrors[parent + name] = {
@@ -397,22 +411,9 @@ export class ValidationService {
     return value
   }
 
-  private normalizeValidateNestedObjectLiteralArgs(
-    args:
-      | [ValidateNestedObjectLiteralOptions]
-      | [string, unknown, FieldErrors, boolean, { [name: string]: TsoaRoute.PropertySchema } | undefined, TsoaRoute.PropertySchema | boolean | undefined, string, ParameterValidationMetadata?],
-  ): ValidateNestedObjectLiteralOptions {
+  private normalizeValidateNestedObjectLiteralArgs(args: [ValidateNestedObjectLiteralOptions] | ValidateNestedObjectLiteralTupleArgs): ValidateNestedObjectLiteralOptions {
     if (typeof args[0] === 'string') {
-      const tupleArgs = args as [
-        string,
-        unknown,
-        FieldErrors,
-        boolean,
-        { [name: string]: TsoaRoute.PropertySchema } | undefined,
-        TsoaRoute.PropertySchema | boolean | undefined,
-        string?,
-        ParameterValidationMetadata?,
-      ]
+      const tupleArgs = args as ValidateNestedObjectLiteralTupleArgs
       const [name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent = '', metadata] = tupleArgs
       return { name, value, fieldErrors, isBodyParam, nestedProperties, additionalProperties, parent, metadata }
     }
@@ -722,39 +723,12 @@ export class ValidationService {
   }
 
   public validateArray(options: ValidateArrayOptions): unknown[] | undefined
-  public validateArray(
-    name: string,
-    value: unknown,
-    fieldErrors: FieldErrors,
-    isBodyParam: boolean,
-    schema?: TsoaRoute.PropertySchema,
-    validators?: ArrayValidator,
-    parent?: string,
-    metadata?: ParameterValidationMetadata,
-  ): unknown[] | undefined
-  public validateArray(
-    nameOrOptions: string | ValidateArrayOptions,
-    value?: unknown,
-    fieldErrors?: FieldErrors,
-    isBodyParam?: boolean,
-    schema?: TsoaRoute.PropertySchema,
-    validators?: ArrayValidator,
-    parent = '',
-    metadata?: ParameterValidationMetadata,
-  ): unknown[] | undefined {
-    const options =
-      typeof nameOrOptions === 'string'
-        ? {
-            name: nameOrOptions,
-            value,
-            fieldErrors: fieldErrors as FieldErrors,
-            isBodyParam: isBodyParam as boolean,
-            schema,
-            validators,
-            parent,
-            metadata,
-          }
-        : nameOrOptions
+  /**
+   * @deprecated Use the object overload instead.
+   */
+  public validateArray(...args: ValidateArrayTupleArgs): unknown[] | undefined
+  public validateArray(...args: [ValidateArrayOptions] | ValidateArrayTupleArgs): unknown[] | undefined {
+    const options = this.normalizeValidateArrayArgs(args)
     const {
       name,
       value: resolvedValue,
@@ -766,7 +740,7 @@ export class ValidationService {
       metadata: resolvedMetadata,
     } = options
     if ((resolvedIsBodyParam && this.config.bodyCoercion === false && !Array.isArray(resolvedValue)) || !resolvedSchema || resolvedValue === undefined) {
-      const message = resolvedValidators && resolvedValidators.isArray && resolvedValidators.isArray.errorMsg ? resolvedValidators.isArray.errorMsg : `invalid array`
+      const message = resolvedValidators?.isArray?.errorMsg || `invalid array`
       resolvedFieldErrors[resolvedParent + name] = {
         message,
         value: resolvedValue,
@@ -798,6 +772,15 @@ export class ValidationService {
     }
 
     return arrayValue
+  }
+
+  private normalizeValidateArrayArgs(args: [ValidateArrayOptions] | ValidateArrayTupleArgs): ValidateArrayOptions {
+    if (typeof args[0] === 'string') {
+      const [name, value, fieldErrors, isBodyParam, schema, validators, parent = '', metadata] = args as ValidateArrayTupleArgs
+      return { name, value, fieldErrors, isBodyParam, schema, validators, parent, metadata }
+    }
+
+    return args[0]
   }
 
   private getArrayValidatorError(validators: ArrayValidator | undefined, arrayValue: unknown[], originalValue: unknown) {
@@ -834,6 +817,10 @@ export class ValidationService {
       const indexOf = arr.indexOf(elem)
       return indexOf > -1 && indexOf !== index
     })
+  }
+
+  private buildIssueFieldPath(baseFieldPath: string, issuePath: string): string {
+    return baseFieldPath ? `${baseFieldPath}.${issuePath}` : issuePath
   }
 
   public validateBuffer(name: string, value: unknown, fieldErrors: FieldErrors, parent = ''): Buffer | undefined {

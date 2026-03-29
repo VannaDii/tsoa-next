@@ -1,5 +1,5 @@
 import { Config, RoutesConfig } from '../config'
-import { Tsoa } from '../metadataGeneration/tsoa'
+import type { Tsoa } from '../metadataGeneration/tsoa'
 
 export interface AdditionalProps {
   noImplicitAdditionalProperties: Exclude<Config['noImplicitAdditionalProperties'], undefined>
