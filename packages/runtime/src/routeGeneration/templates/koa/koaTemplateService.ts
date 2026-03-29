@@ -107,7 +107,10 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
           const contextRequest = context.request as KoaRequestWithBody
           if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
             const rawFileValue: unknown = contextRequest.files?.[name]
-            const fileValue: unknown = param.dataType === 'array' ? rawFileValue : Array.isArray(rawFileValue) ? rawFileValue[0] : rawFileValue
+            let fileValue: unknown = rawFileValue
+            if (param.dataType !== 'array' && Array.isArray(rawFileValue)) {
+              fileValue = rawFileValue[0]
+            }
             const fileArgs = this.validationService.ValidateParam(param, fileValue, name, errorFields, false, undefined, metadata)
             return fileArgs
           }

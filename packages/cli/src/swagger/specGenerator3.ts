@@ -147,9 +147,9 @@ export class SpecGenerator3 extends SpecGenerator {
     const prefix = this.config.disableBasePathPrefixSlash ? undefined : '/'
     const basePath = normalisePath(this.config.basePath as string, prefix, undefined, false)
     const scheme = this.config.schemes ? this.config.schemes[0] : 'https'
-    const hosts = this.config.servers ? this.config.servers : this.config.host ? [this.config.host!] : undefined
+    const hosts = this.config.servers ?? (this.config.host ? [this.config.host] : undefined)
     const convertHost = (host: string) => ({ url: `${scheme}://${host}${basePath}` })
-    return (hosts?.map(convertHost) || [{ url: basePath }]) as Swagger.Server[]
+    return (hosts?.map(convertHost) ?? [{ url: basePath }]) as Swagger.Server[]
   }
 
   protected buildSchema() {
@@ -162,7 +162,7 @@ export class SpecGenerator3 extends SpecGenerator {
         schema[referenceType.refName] = {
           description: referenceType.description,
           properties: this.buildProperties(referenceType.properties),
-          required: required && required.length > 0 ? Array.from(new Set(required)) : undefined,
+          required: required.length > 0 ? Array.from(new Set(required)) : undefined,
           type: 'object',
         }
 
@@ -190,7 +190,7 @@ export class SpecGenerator3 extends SpecGenerator {
             enum: referenceType.enums,
             type: enumTypes.has('string') ? 'string' : 'number',
           }
-          if (this.config.xEnumVarnames && referenceType.enumVarnames !== undefined && referenceType.enums.length === referenceType.enumVarnames.length) {
+          if (this.config.xEnumVarnames && referenceType.enumVarnames?.length === referenceType.enums.length) {
             schema[referenceType.refName]['x-enum-varnames'] = referenceType.enumVarnames
           }
         } else {
@@ -360,7 +360,7 @@ export class SpecGenerator3 extends SpecGenerator {
           let exampleCounter = 1
           const examples = res.examples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
             const exampleLabel = res.exampleLabels?.[currentIndex]
-            acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+            acc[exampleLabel ?? `Example ${exampleCounter++}`] = { value: ex }
             return acc
           }, {})
           const content = swaggerResponses[res.name].content
@@ -424,7 +424,7 @@ export class SpecGenerator3 extends SpecGenerator {
             properties,
             // An empty list required: [] is not valid.
             // If all properties are optional, do not specify the required keyword.
-            ...(required && required.length && { required }),
+            ...(required.length > 0 && { required }),
           },
         },
       },
@@ -472,7 +472,7 @@ export class SpecGenerator3 extends SpecGenerator {
       let exampleCounter = 1
       mediaType.examples = parameterExamples.reduce<Record<string, Swagger.Example3>>((acc, ex, currentIndex) => {
         const exampleLabel = parameterExampleLabels?.[currentIndex]
-        acc[exampleLabel === undefined ? `Example ${exampleCounter++}` : exampleLabel] = { value: ex }
+        acc[exampleLabel ?? `Example ${exampleCounter++}`] = { value: ex }
         return acc
       }, {})
     }

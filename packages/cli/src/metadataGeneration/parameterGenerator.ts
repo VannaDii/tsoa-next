@@ -46,11 +46,7 @@ export class ParameterGenerator {
   ) {}
 
   public Generate(): Tsoa.Parameter[] {
-    const decoratorName = getNodeFirstDecoratorName(
-      this.parameter,
-      (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName),
-      this.current.typeChecker,
-    )
+    const decoratorName = getNodeFirstDecoratorName(this.parameter, (_identifier, canonicalName) => this.supportParameterDecorator(canonicalName), this.current.typeChecker)
     this.assertValidateDecoratorCompatibility(decoratorName)
 
     switch (decoratorName) {
@@ -169,7 +165,6 @@ export class ParameterGenerator {
     const statusArgumentTypes = statusArguments.map(a => this.current.typeChecker.getTypeAtLocation(a))
 
     const isNumberLiteralType = (tsType: ts.Type): tsType is ts.NumberLiteralType => {
-       
       return (tsType.getFlags() & ts.TypeFlags.NumberLiteral) !== 0
     }
 
@@ -283,7 +278,10 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'header',
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Header'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Header'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       type,
@@ -386,11 +384,11 @@ export class ParameterGenerator {
 
             const { examples: example, exampleLabels } = this.getParameterExample(parameter, parameterName)
 
-              return {
-                description: this.getParameterDescription(parameter),
-                in: 'queries',
-                name: parameterName,
-                example: toParameterExamples(example),
+            return {
+              description: this.getParameterDescription(parameter),
+              in: 'queries',
+              name: parameterName,
+              example: toParameterExamples(example),
               exampleLabels,
               parameterName,
               required: !parameter.questionToken && !parameter.initializer,
@@ -473,7 +471,10 @@ export class ParameterGenerator {
       example: toParameterExamples(example),
       exampleLabels,
       in: 'query' as const,
-      name: getDecoratorStringValue(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Query'), parameterName),
+      name: getDecoratorStringValue(
+        getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Query'),
+        parameterName,
+      ),
       parameterName,
       required: !parameter.questionToken && !parameter.initializer,
       validators: getParameterValidators(this.parameter, parameterName),
@@ -519,7 +520,8 @@ export class ParameterGenerator {
     const parameterName = (parameter.name as ts.Identifier).text
 
     const type = this.getValidatedType(parameter)
-    const pathName = String(getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Path') || parameterName)
+    const decoratorValue = getNodeFirstDecoratorValue(this.parameter, this.current.typeChecker, (_ident, canonicalName) => canonicalName === 'Path')
+    const pathName = typeof decoratorValue === 'string' ? decoratorValue : parameterName
 
     if (!this.supportPathDataType(type)) {
       throw new GenerateMetadataError(`@Path('${parameterName}') Can't support '${type.dataType}' type.`)
@@ -628,8 +630,11 @@ export class ParameterGenerator {
   }
 
   private supportParameterDecorator(decoratorName?: string) {
-    return !!decoratorName && ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
-      d => d === decoratorName.toLocaleLowerCase(),
+    return (
+      !!decoratorName &&
+      ['header', 'query', 'queries', 'path', 'body', 'bodyprop', 'request', 'requestprop', 'res', 'inject', 'uploadedfile', 'uploadedfiles', 'formfield'].some(
+        d => d === decoratorName.toLocaleLowerCase(),
+      )
     )
   }
 

@@ -4562,7 +4562,7 @@ describe('Definition generation for OpenAPI 3.0.0', () => {
             throw new Error(`There was no ${aPropertyName} schema generated for the ${currentSpec.specName}`)
           }
           it(`should produce a valid schema for the ${aPropertyName} property on ${interfaceModelName} for the ${currentSpec.specName}`, () => {
-            assertionsPerProperty[aPropertyName](aPropertyName, propertySchema)
+            expect(() => assertionsPerProperty[aPropertyName](aPropertyName, propertySchema)).not.to.throw()
           })
         })
 

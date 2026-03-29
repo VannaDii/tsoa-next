@@ -33,8 +33,7 @@ type DeclarationWithTypeParameters = ts.Declaration & {
 }
 type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 
-const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } =>
-  'initializer' in declaration && declaration.initializer !== undefined
+const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
 
 const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
   const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
@@ -198,8 +197,9 @@ export class TypeResolver {
     if (ts.isMappedTypeNode(this.typeNode)) {
       const mappedTypeNode = this.typeNode
       const getOneOrigDeclaration = (prop: ts.Symbol): ts.Declaration | undefined => {
-        if (prop.declarations) {
-          return prop.declarations[0]
+        const declaration = prop.declarations?.[0]
+        if (declaration) {
+          return declaration
         }
         const syntheticOrigin = getSyntheticOrigin(prop)
         if (syntheticOrigin && syntheticOrigin.name === prop.name) {
@@ -259,8 +259,9 @@ export class TypeResolver {
               return {
                 name: property.getName(),
                 required,
-                deprecated:
-                  parent ? isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker) : false,
+                deprecated: parent
+                  ? isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
+                  : false,
                 type,
                 default: def,
                 // validators are disjunct via types, so it is now OK.
@@ -646,21 +647,13 @@ export class TypeResolver {
     return this.getIoTsUtilityTypeFromSymbol(symbol, typeChecker)
   }
 
-  private entityNameComesFromModule(
-    entityName: ts.EntityName,
-    typeChecker: ts.TypeChecker,
-    moduleName: string,
-  ): boolean {
+  private entityNameComesFromModule(entityName: ts.EntityName, typeChecker: ts.TypeChecker, moduleName: string): boolean {
     const symbolNode = ts.isQualifiedName(entityName) ? entityName.right : entityName
     const symbol = typeChecker.getSymbolAtLocation(symbolNode)
     return !!symbol && this.symbolComesFromModule(symbol, typeChecker, moduleName)
   }
 
-  private getIoTsUtilityTypeFromSymbol(
-    symbol: ts.Symbol | undefined,
-    typeChecker: ts.TypeChecker,
-    visited: Set<ts.Symbol> = new Set(),
-  ): IoTsUtilityType | undefined {
+  private getIoTsUtilityTypeFromSymbol(symbol: ts.Symbol | undefined, typeChecker: ts.TypeChecker, visited: Set<ts.Symbol> = new Set()): IoTsUtilityType | undefined {
     if (!symbol || visited.has(symbol)) {
       return undefined
     }
@@ -683,12 +676,7 @@ export class TypeResolver {
     return undefined
   }
 
-  private symbolComesFromModule(
-    symbol: ts.Symbol,
-    typeChecker: ts.TypeChecker,
-    moduleName: string,
-    visited: Set<ts.Symbol> = new Set(),
-  ): boolean {
+  private symbolComesFromModule(symbol: ts.Symbol, typeChecker: ts.TypeChecker, moduleName: string, visited: Set<ts.Symbol> = new Set()): boolean {
     if (visited.has(symbol)) {
       return false
     }
@@ -1095,7 +1083,8 @@ export class TypeResolver {
   private getModelReference(modelType: ts.InterfaceDeclaration | ts.ClassDeclaration, refTypeName: string) {
     const example = this.getNodeExample(modelType)
     const description = this.getNodeDescription(modelType)
-    const deprecated = isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
+    const deprecated =
+      isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
     const title = this.getNodeTitle(modelType)
 
     // Handle toJSON methods

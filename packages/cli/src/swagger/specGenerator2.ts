@@ -34,7 +34,7 @@ export class SpecGenerator2 extends SpecGenerator {
       swagger: '2.0',
     }
 
-    const securityDefinitions = this.config.securityDefinitions ? this.config.securityDefinitions : {}
+    const securityDefinitions = this.config.securityDefinitions ?? {}
     const supportedSchemes = ['basic', 'apiKey', 'oauth2']
     for (const { type } of Object.values(securityDefinitions)) {
       if (!supportedSchemes.includes(type)) {
@@ -95,7 +95,7 @@ export class SpecGenerator2 extends SpecGenerator {
         definitions[referenceType.refName] = {
           description: referenceType.description,
           properties: this.buildProperties(referenceType.properties),
-          required: required && required.length > 0 ? Array.from(new Set(required)) : undefined,
+          required: required.length > 0 ? Array.from(new Set(required)) : undefined,
           type: 'object',
         }
 
@@ -120,7 +120,7 @@ export class SpecGenerator2 extends SpecGenerator {
           enum: referenceType.enums,
           type: this.decideEnumType(referenceType.enums, referenceType.refName),
         }
-        if (this.config.xEnumVarnames && referenceType.enumVarnames !== undefined && referenceType.enums.length === referenceType.enumVarnames.length) {
+        if (this.config.xEnumVarnames && referenceType.enumVarnames?.length === referenceType.enums.length) {
           definitions[referenceType.refName]['x-enum-varnames'] = referenceType.enumVarnames
         }
         if (referenceType.example) {
