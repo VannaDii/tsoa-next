@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   publish-dev-build:
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && !startsWith(github.event.pull_request.head.ref, 'changeset-release/'))
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main')
     runs-on: ubuntu-latest
 
     steps:
@@ -57,8 +57,15 @@ jobs:
       - uses: actions/checkout@v6.0.2
         with:
           ref: ${{ steps.publish-inputs.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Detect package impact
+        id: detect-impact
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/detect-package-impact
 
       - name: Setup Node
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         uses: actions/setup-node@v6.3.0
         with:
           node-version: 24
@@ -67,13 +74,16 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         run: npm ci --ignore-scripts
 
       - name: Build packages
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         run: npm run build
 
       - name: Prepare dev package manifests
         id: prepare
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -93,15 +103,19 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Publish runtime
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/runtime"
 
       - name: Publish cli
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/cli"
 
       - name: Publish tsoa-next
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         run: npm publish --provenance --tag "${{ steps.publish-inputs.outputs.dist_tag }}" "${{ runner.temp }}/dev-publish/tsoa"
 
       - name: Summarize published dev build
+        if: github.event_name == 'workflow_dispatch' || steps.detect-impact.outputs.should-publish-dev-build == 'true'
         shell: bash
         run: |
           {
@@ -116,4 +130,20 @@ jobs:
             echo
             echo "### Packages"
             jq -r '.packages[] | "- `\(.name)@\(.version)`"' "${{ steps.prepare.outputs.manifest }}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Summarize skipped dev build
+        if: github.event_name == 'pull_request' && steps.detect-impact.outputs.should-publish-dev-build != 'true'
+        shell: bash
+        run: |
+          {
+            echo "## Dev Build Skipped"
+            echo
+            if [[ "${{ steps.detect-impact.outputs.is-release-pr }}" == 'true' ]]; then
+              echo "Merged PR #${{ github.event.pull_request.number }} is a changeset release PR, so no dev package was published."
+            elif [[ "${{ steps.detect-impact.outputs.has-changeset }}" != 'true' ]]; then
+              echo "Merged PR #${{ github.event.pull_request.number }} did not include a changeset, so no dev package was published."
+            else
+              echo "Merged PR #${{ github.event.pull_request.number }} did not meet the dev publish criteria."
+            fi
           } >> "${GITHUB_STEP_SUMMARY}"
