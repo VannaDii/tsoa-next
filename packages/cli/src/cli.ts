@@ -237,7 +237,7 @@ export const validateSpecConfig = async (config: Config): Promise<ExtendedSpecCo
   const author = await authorInformation
 
   if (typeof author === 'string') {
-    const contact = /^([^<(]*)?\s*(?:<([^>(]*)>)?\s*(?:\(([^)]*)\)|$)/m.exec(author)
+    const contact = /^([^<(]+)?\s*(?:<([^>(]*)>)?\s*(?:\(([^)]*)\)|$)/m.exec(author)
 
     config.spec.contact.name = config.spec.contact.name || contact?.[1]
     config.spec.contact.email = config.spec.contact.email || contact?.[2]
