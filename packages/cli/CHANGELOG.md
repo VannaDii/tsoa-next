@@ -1,5 +1,12 @@
 # @tsoa-next/cli
 
+## 7.3.2
+
+### Patch Changes
+
+- 0eea2bc: Resolves security issues and improves code quality
+  - @tsoa-next/runtime@7.3.2
+
 ## 7.3.1
 
 ### Patch Changes
