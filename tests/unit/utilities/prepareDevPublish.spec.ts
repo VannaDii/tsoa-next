@@ -8,6 +8,7 @@ import 'mocha'
 describe('prepare-dev-publish', () => {
   const repoRoot = resolve(__dirname, '../../..')
   const scriptPath = resolve(repoRoot, 'scripts/prepare-dev-publish.cjs')
+  const runtimeSourcePackage = readJson(resolve(repoRoot, 'packages/runtime/package.json'))
 
   function createOutputDir() {
     return mkdtempSync(join(tmpdir(), 'tsoa-dev-publish-'))
@@ -31,8 +32,9 @@ describe('prepare-dev-publish', () => {
           encoding: 'utf8',
         }),
       )
+      const expectedVersion = `${runtimeSourcePackage.version}-dev.42.abcdef0`
 
-      expect(manifest.version).to.equal('7.3.3-dev.42.abcdef0')
+      expect(manifest.version).to.equal(expectedVersion)
       expect(manifest.packages.map((pkg: { name: string }) => pkg.name)).to.deep.equal(['@tsoa-next/runtime', '@tsoa-next/cli', 'tsoa-next'])
 
       const runtimePackage = readJson(join(outDir, 'runtime', 'package.json'))
