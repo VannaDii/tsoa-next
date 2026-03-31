@@ -1,6 +1,6 @@
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
-import { Swagger } from '@tsoa-next/runtime'
+import { Swagger, Tsoa } from '@tsoa-next/runtime'
 import { expect } from 'chai'
 import { promises as fs } from 'node:fs'
 import 'mocha'
@@ -221,5 +221,27 @@ describe('Backward compatibility regressions', () => {
         $ref: '#/components/schemas/CommunityGamesInvalidVersionError',
       })
     })
+  })
+
+  it('does not crash OpenAPI schema generation when a partial refObject slips into the metadata map', () => {
+    const metadata = {
+      controllers: [],
+      referenceTypeMap: {
+        PartialRefObject: {
+          dataType: 'refObject',
+          deprecated: false,
+          refName: 'PartialRefObject',
+        },
+      },
+    } as unknown as Tsoa.Metadata
+
+    const spec = new SpecGenerator3(metadata, getDefaultExtendedOptions('', '')).GetSpec()
+    const schema = getSchema(spec, 'PartialRefObject') as Swagger.Schema3
+
+    expect(schema).to.include({
+      additionalProperties: true,
+      type: 'object',
+    })
+    expect(schema.properties).to.deep.equal({})
   })
 })
