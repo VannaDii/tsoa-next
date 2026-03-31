@@ -1,4 +1,5 @@
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
+import { SpecGenerator2 } from '@tsoa-next/cli/swagger/specGenerator2'
 import { SpecGenerator3 } from '@tsoa-next/cli/swagger/specGenerator3'
 import { Swagger, Tsoa } from '@tsoa-next/runtime'
 import { expect } from 'chai'
@@ -243,5 +244,27 @@ describe('Backward compatibility regressions', () => {
       type: 'object',
     })
     expect(schema.properties).to.deep.equal({})
+  })
+
+  it('does not crash Swagger 2 definition generation when a partial refObject slips into the metadata map', () => {
+    const metadata = {
+      controllers: [],
+      referenceTypeMap: {
+        PartialRefObject: {
+          dataType: 'refObject',
+          deprecated: false,
+          refName: 'PartialRefObject',
+        },
+      },
+    } as unknown as Tsoa.Metadata
+
+    const spec = new SpecGenerator2(metadata, getDefaultExtendedOptions('', '')).GetSpec()
+    const definition = spec.definitions?.PartialRefObject as Swagger.Schema2
+
+    expect(definition).to.include({
+      additionalProperties: true,
+      type: 'object',
+    })
+    expect(definition.properties).to.deep.equal({})
   })
 })
