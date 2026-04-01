@@ -1,5 +1,11 @@
 # @tsoa-next/cli
 
+## 8.0.0
+
+### Patch Changes
+
+- @tsoa-next/runtime@8.0.0
+
 ## 7.3.4
 
 ### Patch Changes
