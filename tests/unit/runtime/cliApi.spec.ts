@@ -4,7 +4,7 @@ import type { ExtendedRoutesConfig, ExtendedSpecConfig } from '../../../packages
 import type { Config, Tsoa } from '@tsoa-next/runtime'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, normalize } from 'node:path'
 import type { CompilerOptions } from 'typescript'
 import { getDefaultOptions } from '../../fixtures/defaultOptions'
 
@@ -280,7 +280,7 @@ describe('CLI API', () => {
       throw new Error('Expected compiler options resolved from the test tsconfig.')
     }
 
-    expect(compilerOptions.configFilePath).to.equal(join(process.cwd(), 'tsconfig.json'))
+    expect(normalize(compilerOptions.configFilePath)).to.equal(normalize(join(process.cwd(), 'tsconfig.json')))
     expect(metadataArgs[4]).to.deep.equal([{ bearerAuth: ['read'] }])
 
     const [routeCall] = routeCalls
