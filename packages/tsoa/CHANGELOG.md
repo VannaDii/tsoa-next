@@ -1,5 +1,16 @@
 # tsoa-next
 
+## 8.0.0
+
+### Major Changes
+
+- e942a31: Make `tsoa-next` root runtime-only and move programmatic generation exports to `tsoa-next/cli` so runtime imports do not eagerly load CLI dependencies.
+
+### Patch Changes
+
+- @tsoa-next/cli@8.0.0
+- @tsoa-next/runtime@8.0.0
+
 ## 7.3.4
 
 ### Patch Changes
