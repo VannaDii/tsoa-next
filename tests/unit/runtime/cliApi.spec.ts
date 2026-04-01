@@ -219,6 +219,46 @@ describe('CLI API', () => {
     expect(metadata).to.equal(undefined)
   })
 
+  it('generates routes from route-only config objects without requiring spec metadata', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'tsoa-cli-api-routes-only-'))
+    temporaryDirectories.add(rootDir)
+
+    const entryFile = join(rootDir, 'entry.ts')
+    const routesDir = join(rootDir, 'routes')
+    writeFileSync(entryFile, 'export const controller = true\n', 'utf8')
+
+    const routeCalls: GenerateRoutesCall[] = []
+    const api = loadAPI({
+      generateRoutes: async (...args) => {
+        routeCalls.push(args)
+        return {
+          controllers: [],
+          referenceTypeMap: {},
+        }
+      },
+    })
+
+    const config: Config = getDefaultOptions(join(rootDir, 'spec'), entryFile)
+    config.routes.routesDir = routesDir
+    Reflect.deleteProperty(config, 'spec')
+
+    await api.generateRoutesFromArgs({
+      basePath: '/routes-only',
+      configuration: config,
+    })
+
+    expect(routeCalls).to.have.length(1)
+    const [call] = routeCalls
+
+    if (!call) {
+      throw new Error('Expected a route generation call.')
+    }
+
+    const [routesConfig] = call
+    expect(routesConfig.basePath).to.equal('/routes-only')
+    expect(routesConfig.rootSecurity).to.equal(undefined)
+  })
+
   it('generates spec and routes from a config object without loading CLI parsing dependencies', async () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'tsoa-cli-api-object-'))
     temporaryDirectories.add(rootDir)
@@ -321,5 +361,97 @@ describe('CLI API', () => {
     }
 
     expect(thrownError?.message).to.equal('spec.rootSecurity must be an array of objects whose keys are security scheme names and values are arrays of scopes')
+  })
+
+  it('reports missing spec config before applying CLI overrides', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'tsoa-cli-api-missing-spec-'))
+    temporaryDirectories.add(rootDir)
+
+    const entryFile = join(rootDir, 'entry.ts')
+    writeFileSync(entryFile, 'export const controller = true\n', 'utf8')
+
+    const api = loadAPI()
+    const config: Config = getDefaultOptions(join(rootDir, 'spec'), entryFile)
+    Reflect.deleteProperty(config, 'spec')
+
+    let thrownError: Error | undefined
+
+    try {
+      await api.generateSpecFromArgs({
+        basePath: '/broken',
+        configuration: config,
+        host: 'broken.example.com',
+        yaml: true,
+      })
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    }
+
+    expect(thrownError?.message).to.equal('Missing spec: configuration must contain spec. Spec used to be called swagger in previous versions of tsoa.')
+  })
+
+  it('reports missing routes config before applying CLI overrides', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'tsoa-cli-api-missing-routes-'))
+    temporaryDirectories.add(rootDir)
+
+    const entryFile = join(rootDir, 'entry.ts')
+    writeFileSync(entryFile, 'export const controller = true\n', 'utf8')
+
+    const api = loadAPI()
+    const config: Config = getDefaultOptions(join(rootDir, 'spec'), entryFile)
+    Reflect.deleteProperty(config, 'routes')
+
+    let thrownError: Error | undefined
+
+    try {
+      await api.generateRoutesFromArgs({
+        basePath: '/broken',
+        configuration: config,
+      })
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    }
+
+    expect(thrownError?.message).to.equal('Missing routes: configuration must contain routes.')
+  })
+
+  it('reports missing spec config for combined generation before applying CLI overrides', async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'tsoa-cli-api-missing-combined-spec-'))
+    temporaryDirectories.add(rootDir)
+
+    const entryFile = join(rootDir, 'entry.ts')
+    writeFileSync(entryFile, 'export const controller = true\n', 'utf8')
+
+    const api = loadAPI()
+    const config: Config = getDefaultOptions(join(rootDir, 'spec'), entryFile)
+    config.routes.routesDir = join(rootDir, 'routes')
+    Reflect.deleteProperty(config, 'spec')
+
+    let thrownError: Error | undefined
+
+    try {
+      await api.generateSpecAndRoutes({
+        basePath: '/broken',
+        configuration: config,
+        host: 'broken.example.com',
+        yaml: true,
+      })
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    }
+
+    expect(thrownError?.message).to.equal('Missing spec: configuration must contain spec. Spec used to be called swagger in previous versions of tsoa.')
   })
 })

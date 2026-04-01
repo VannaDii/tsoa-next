@@ -88,8 +88,9 @@ export async function runCLI() {
   const [yargsModule, yargsHelpers] = await Promise.all([import('yargs'), import('yargs/helpers')])
   const yargsFactory = getYargsFactory(yargsModule)
   const hideBin = getHideBin(yargsHelpers)
+  const cli = yargsFactory(hideBin(process.argv))
 
-  return yargsFactory(hideBin(process.argv))
+  return cli
     .scriptName('tsoa')
     .usage('Usage: $0 <command> [options]')
     .command('spec', 'Generate OpenAPI spec', specCommandArgs, async (args: SpecCommandArguments) => {
@@ -121,6 +122,10 @@ export async function runCLI() {
     .alias('help', 'h')
     .exitProcess(false)
     .fail((message: string, error: Error | undefined) => {
+      if (!error && message) {
+        cli.showHelp('error')
+      }
+
       if (error instanceof Error) {
         throw error
       }

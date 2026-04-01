@@ -159,4 +159,46 @@ describe('runCLI', () => {
 
     expect(thrownError).to.equal(expectedError)
   })
+
+  it('prints CLI help before throwing on invalid command usage', async () => {
+    const runCLI = loadRunCLI({
+      async generateSpecFromArgs() {
+        throw new Error('spec command should not run')
+      },
+      async generateRoutesFromArgs() {
+        throw new Error('routes command should not run')
+      },
+      async generateSpecAndRoutes() {
+        throw new Error('spec-and-routes command should not run')
+      },
+    })
+
+    process.argv = ['node', 'tsoa']
+
+    const originalConsoleError = console.error
+    const renderedErrors: string[] = []
+    console.error = (...args: unknown[]) => {
+      renderedErrors.push(args.map(value => String(value)).join(' '))
+    }
+
+    let thrownError: Error | undefined
+
+    try {
+      await runCLI()
+    } catch (error) {
+      if (error instanceof Error) {
+        thrownError = error
+      } else {
+        throw error
+      }
+    } finally {
+      console.error = originalConsoleError
+    }
+
+    expect(thrownError?.message).to.equal('Must provide a valid command.')
+
+    const renderedHelp = renderedErrors.join('\n')
+    expect(renderedHelp).to.contain('Usage: tsoa <command> [options]')
+    expect(renderedHelp).to.contain('spec-and-routes')
+  })
 })

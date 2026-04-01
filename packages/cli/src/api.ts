@@ -367,32 +367,37 @@ export const validateRoutesConfig = async (config: Config): Promise<ExtendedRout
   if (config.entryFile && !(await fsExists(config.entryFile))) {
     throw new Error(`EntryFile not found: ${config.entryFile} - Please check your tsoa config.`)
   }
-  if (!config.routes.routesDir) {
+  const routes = config.routes
+
+  if (!routes) {
+    throw new Error('Missing routes: configuration must contain routes.')
+  }
+  if (!routes.routesDir) {
     throw new Error('Missing routesDir: Configuration must contain a routes file output directory.')
   }
 
-  if (config.routes.authenticationModule && !((await fsExists(config.routes.authenticationModule)) || (await fsExists(config.routes.authenticationModule + '.ts')))) {
-    throw new Error(`No authenticationModule file found at '${config.routes.authenticationModule}'`)
+  if (routes.authenticationModule && !((await fsExists(routes.authenticationModule)) || (await fsExists(routes.authenticationModule + '.ts')))) {
+    throw new Error(`No authenticationModule file found at '${routes.authenticationModule}'`)
   }
 
-  if (config.routes.iocModule && !((await fsExists(config.routes.iocModule)) || (await fsExists(config.routes.iocModule + '.ts')))) {
-    throw new Error(`No iocModule file found at '${config.routes.iocModule}'`)
+  if (routes.iocModule && !((await fsExists(routes.iocModule)) || (await fsExists(routes.iocModule + '.ts')))) {
+    throw new Error(`No iocModule file found at '${routes.iocModule}'`)
   }
 
   const noImplicitAdditionalProperties = determineNoImplicitAdditionalSetting(config.noImplicitAdditionalProperties)
 
-  const bodyCoercion = config.routes.bodyCoercion ?? true
+  const bodyCoercion = routes.bodyCoercion ?? true
 
-  config.routes.basePath = config.routes.basePath || '/'
+  routes.basePath = routes.basePath || '/'
 
   return {
-    ...config.routes,
+    ...routes,
     entryFile: config.entryFile,
     noImplicitAdditionalProperties,
     bodyCoercion,
     controllerPathGlobs: config.controllerPathGlobs,
     multerOpts: config.multerOpts,
-    rootSecurity: config.spec.rootSecurity,
+    rootSecurity: config.spec?.rootSecurity,
   }
 }
 
@@ -407,60 +412,54 @@ export interface SwaggerArgs extends ConfigArgs {
   yaml?: boolean
 }
 
-export async function generateSpecFromArgs(args: SwaggerArgs) {
-  const { config, configBaseDir } = await resolveConfig(args.configuration)
+const applyBasePathArg = <T extends { basePath?: string }>(config: T, args: ConfigArgs) => {
   if (args.basePath) {
-    config.spec.basePath = args.basePath
+    config.basePath = args.basePath
   }
+}
+
+const applySwaggerArgs = (config: ExtendedSpecConfig, args: SwaggerArgs) => {
+  applyBasePathArg(config, args)
+
   if (args.host) {
-    config.spec.host = args.host
+    config.host = args.host
   }
   if (args.yaml) {
-    config.spec.yaml = args.yaml
+    config.yaml = args.yaml
   }
   if (args.json) {
-    config.spec.yaml = false
+    config.yaml = false
   }
+}
 
+export async function generateSpecFromArgs(args: SwaggerArgs) {
+  const { config, configBaseDir } = await resolveConfig(args.configuration)
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
   const swaggerConfig = await validateSpecConfig(config)
+  applySwaggerArgs(swaggerConfig, args)
 
   await generateSpec(swaggerConfig, compilerOptions, config.ignore)
 }
 
 export async function generateRoutesFromArgs(args: ConfigArgs) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
-  if (args.basePath) {
-    config.routes.basePath = args.basePath
-  }
-
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
   const routesConfig = await validateRoutesConfig(config)
+  applyBasePathArg(routesConfig, args)
 
   await generateRoutes(routesConfig, compilerOptions, config.ignore)
 }
 
 export async function generateSpecAndRoutes(args: SwaggerArgs, metadata?: Tsoa.Metadata) {
   const { config, configBaseDir } = await resolveConfig(args.configuration)
-  if (args.basePath) {
-    config.spec.basePath = args.basePath
-  }
-  if (args.host) {
-    config.spec.host = args.host
-  }
-  if (args.yaml) {
-    config.spec.yaml = args.yaml
-  }
-  if (args.json) {
-    config.spec.yaml = false
-  }
-
   const compilerOptions = validateCompilerOptions(config, configBaseDir)
-  const routesConfig = await validateRoutesConfig(config)
   const swaggerConfig = await validateSpecConfig(config)
+  const routesConfig = await validateRoutesConfig(config)
+  applySwaggerArgs(swaggerConfig, args)
+  applyBasePathArg(routesConfig, args)
 
   if (!metadata) {
-    metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, config.spec.rootSecurity, config.defaultNumberType, config.routes.esm).Generate()
+    metadata = new MetadataGenerator(config.entryFile, compilerOptions, config.ignore, config.controllerPathGlobs, swaggerConfig.rootSecurity, config.defaultNumberType, routesConfig.esm).Generate()
   }
 
   await Promise.all([generateRoutes(routesConfig, compilerOptions, config.ignore, metadata), generateSpec(swaggerConfig, compilerOptions, config.ignore, metadata)])
