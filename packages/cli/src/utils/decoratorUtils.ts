@@ -52,7 +52,7 @@ export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identif
   // beginning in ts4.8 node.decorator is undefined, use getDecorators instead.
   const decorators = tsHasDecorators(ts) && ts.canHaveDecorators(node) ? ts.getDecorators(node) : []
 
-  if (!decorators || !decorators.length) {
+  if (!decorators?.length) {
     return []
   }
 
@@ -67,8 +67,8 @@ export function getDecorators(node: ts.Node, isMatching: (identifier: ts.Identif
 
 export function getNodeFirstDecoratorName(node: ts.Node, isMatching: (identifier: ts.Identifier, canonicalName?: string) => boolean, typeChecker?: ts.TypeChecker) {
   const decorators = getDecorators(node, isMatching, typeChecker)
-  if (!decorators || !decorators.length) {
-    return
+  if (!decorators?.length) {
+    return undefined
   }
 
   return typeChecker ? getCanonicalDecoratorName(decorators[0], typeChecker) : decorators[0].text
@@ -76,11 +76,12 @@ export function getNodeFirstDecoratorName(node: ts.Node, isMatching: (identifier
 
 export function getNodeFirstDecoratorValue(node: ts.Node, typeChecker: ts.TypeChecker, isMatching: (identifier: ts.Identifier, canonicalName?: string) => boolean) {
   const decorators = getDecorators(node, isMatching, typeChecker)
-  if (!decorators || !decorators.length) {
-    return
+  if (!decorators?.length) {
+    return undefined
   }
+
   const values = getDecoratorValues(decorators[0], typeChecker)
-  return values && values[0]
+  return values[0]
 }
 
 export function getDecoratorValues(decorator: ts.Identifier, typeChecker: ts.TypeChecker): InitializerValue[] {
@@ -89,9 +90,10 @@ export function getDecoratorValues(decorator: ts.Identifier, typeChecker: ts.Typ
   }
 
   const expArguments = decorator.parent.arguments
-  if (!expArguments || !expArguments.length) {
+  if (!expArguments?.length) {
     return []
   }
+
   return expArguments.map(a => getInitializerValue(a, typeChecker))
 }
 
@@ -107,9 +109,10 @@ export function getSecurites(decorator: ts.Identifier, typeChecker: ts.TypeCheck
 
 export function isDecorator(node: ts.Node, isMatching: (identifier: ts.Identifier, canonicalName?: string) => boolean, typeChecker?: ts.TypeChecker) {
   const decorators = getDecorators(node, isMatching, typeChecker)
-  if (!decorators || !decorators.length) {
+  if (!decorators?.length) {
     return false
   }
+
   return true
 }
 
@@ -130,19 +133,15 @@ export function getPath(decorator: ts.Identifier, typeChecker: ts.TypeChecker): 
 export function getProduces(node: ts.Node, typeChecker: ts.TypeChecker): string[] {
   const producesDecorators = getDecorators(node, (_identifier, canonicalName) => canonicalName === 'Produces', typeChecker)
 
-  if (!producesDecorators || !producesDecorators.length) {
+  if (!producesDecorators?.length) {
     return []
   }
 
-  return producesDecorators
-    .map(decorator => getDecoratorValues(decorator, typeChecker)[0])
-    .filter((value): value is string => typeof value === 'string')
+  return producesDecorators.map(decorator => getDecoratorValues(decorator, typeChecker)[0]).filter((value): value is string => typeof value === 'string')
 }
 
 function toSecurity(value: Record<string, unknown>): Tsoa.Security {
-  return Object.fromEntries(
-    Object.entries(value).map(([key, scopes]) => [key, Array.isArray(scopes) ? scopes.filter((scope): scope is string => typeof scope === 'string') : []]),
-  )
+  return Object.fromEntries(Object.entries(value).map(([key, scopes]) => [key, Array.isArray(scopes) ? scopes.filter((scope): scope is string => typeof scope === 'string') : []]))
 }
 
 function getDecoratorIdentifier(decorator: ts.Decorator): ts.Identifier | undefined {
@@ -200,7 +199,7 @@ function isRuntimeDecoratorSymbol(symbol: ts.Symbol): boolean {
       return true
     }
 
-    const sourceFileName = declaration.getSourceFile().fileName.replace(/\\/g, '/').toLowerCase()
+    const sourceFileName = declaration.getSourceFile().fileName.replaceAll('\\', '/').toLowerCase()
     return (
       sourceFileName.includes('/packages/runtime/src/decorators/') ||
       sourceFileName.includes('/packages/runtime/dist/decorators/') ||
@@ -237,30 +236,25 @@ function getImportedDecoratorName(symbol: ts.Symbol): string | undefined {
   const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
 
   for (const declaration of declarations) {
-    if (ts.isImportSpecifier(declaration)) {
-      const moduleSpecifier = getModuleSpecifierText(declaration)
-      if (!moduleSpecifier || !isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
-        continue
-      }
-
-      const importedName = declaration.propertyName?.text ?? declaration.name.text
-      if (TSOA_DECORATOR_NAMES.has(importedName)) {
-        return importedName
-      }
-    }
-
-    if (ts.isExportSpecifier(declaration)) {
-      const moduleSpecifier = getModuleSpecifierText(declaration)
-      if (!moduleSpecifier || !isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
-        continue
-      }
-
-      const exportedName = declaration.propertyName?.text ?? declaration.name.text
-      if (TSOA_DECORATOR_NAMES.has(exportedName)) {
-        return exportedName
-      }
+    const decoratorName = getImportedDecoratorNameFromDeclaration(declaration)
+    if (decoratorName) {
+      return decoratorName
     }
   }
 
   return undefined
+}
+
+function getImportedDecoratorNameFromDeclaration(declaration: ts.Declaration): string | undefined {
+  if (!ts.isImportSpecifier(declaration) && !ts.isExportSpecifier(declaration)) {
+    return undefined
+  }
+
+  const moduleSpecifier = getModuleSpecifierText(declaration)
+  if (!moduleSpecifier || !isTsoaDecoratorModuleSpecifier(moduleSpecifier)) {
+    return undefined
+  }
+
+  const decoratorName = declaration.propertyName?.text ?? declaration.name.text
+  return TSOA_DECORATOR_NAMES.has(decoratorName) ? decoratorName : undefined
 }
