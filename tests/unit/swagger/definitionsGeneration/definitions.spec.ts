@@ -120,6 +120,8 @@ describe('Definition generation', () => {
       if (!modelFound) {
         throw new Error(`${expectedModel} should not have been automatically generated in at least one model.  False positive averted.`)
       }
+
+      expect(modelFound).to.equal(true)
     })
 
     it('should generate a definition for referenced models', () => {
@@ -135,7 +137,7 @@ describe('Definition generation', () => {
           'tsoaTest.TsoaTest.TestModel73',
         ]
         expectedModels.forEach(modelName => {
-          getValidatedDefinition(modelName, currentSpec)
+          expect(getValidatedDefinition(modelName, currentSpec)).to.exist
         })
       })
     })
@@ -3302,6 +3304,7 @@ describe('Definition generation', () => {
             throw new Error(`There was no ${aPropertyName} schema generated for the ${currentSpec.specName}`)
           }
           it(`should produce a valid schema for the ${aPropertyName} property on ${interfaceName} for the ${currentSpec.specName}`, () => {
+            expect(propertySchema).to.exist
             assertionsPerProperty[aPropertyName as keyof TestModel](aPropertyName, propertySchema)
           })
         })
@@ -3374,7 +3377,7 @@ describe('Definition generation', () => {
       const properties = definition.properties
 
       it('should generate a definition for referenced model', () => {
-        getValidatedDefinition(modelName, currentSpec)
+        expect(getValidatedDefinition(modelName, currentSpec)).to.equal(definition)
       })
 
       it('should generate a required property from a required property', () => {
@@ -3391,6 +3394,8 @@ describe('Definition generation', () => {
         if (!properties[propertyName]) {
           throw new Error(`Property '${propertyName}' was expected to exist.`)
         }
+
+        expect(definition.required).to.not.contain(propertyName)
       })
 
       it('should generate a required property from a required property with no access modifier', () => {
@@ -3422,23 +3427,17 @@ describe('Definition generation', () => {
 
       it('should not generate a property for a non-public property', () => {
         const propertyName = 'protectedStringProperty'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(properties[propertyName]).to.be.undefined
       })
 
       it('should not generate a property for a static property', () => {
         const propertyName = 'staticStringProperty'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(properties[propertyName]).to.be.undefined
       })
 
       it('should not generate a property for a non-public constructor var', () => {
         const propertyName = 'protectedConstructorVar'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(properties[propertyName]).to.be.undefined
       })
 
       it('should generate a property from a readonly constructor argument', () => {
@@ -3546,9 +3545,7 @@ describe('Definition generation', () => {
         it('should not generate a property for a non-public constructor var', () => {
           const propertyNames = ['defaultConstructorArgument', 'deprecatedNonPublicConstructorVar']
           propertyNames.forEach(propertyName => {
-            if (properties[propertyName]) {
-              throw new Error(`Property '${propertyName}' was not expected to exist.`)
-            }
+            expect(properties[propertyName]).to.be.undefined
           })
         })
 

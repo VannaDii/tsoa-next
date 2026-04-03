@@ -21,7 +21,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
 
     return Promise.all(
       invalidValues.map((value: any) => {
-        return verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest/Object',
+          { obj: value },
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.be.a('string')
+          },
+          400,
+        )
       }),
     )
   })
@@ -124,8 +133,9 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
       app,
       path,
       data,
-      () => {
-        return
+      (_err, res) => {
+        expect(res.status).to.equal(201)
+        expect(res.body).to.deep.equal(data)
       },
       201,
     )
@@ -151,7 +161,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, () => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err, res) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('stringValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -164,7 +183,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         const data = getFakeModel()
         data.dateValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('dateValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -177,7 +205,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         const data = getFakeModel()
         data.numberValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('numberValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -353,7 +390,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
         key3: -1,
       }
       const SUCCESS_BECAUSE_DICTIONARIES_ALLOW_ADDITIONAL_PROPERTIES = 200
-      return verifyPostRequest(app, basePath + '/Validate/map', data, (_err, _res) => null, SUCCESS_BECAUSE_DICTIONARIES_ALLOW_ADDITIONAL_PROPERTIES)
+      return verifyPostRequest(
+        app,
+        basePath + '/Validate/map',
+        data,
+        (_err, res) => {
+          expect(res.status).to.equal(SUCCESS_BECAUSE_DICTIONARIES_ALLOW_ADDITIONAL_PROPERTIES)
+          expect(res.body).to.have.members([0, 1, -1])
+        },
+        SUCCESS_BECAUSE_DICTIONARIES_ALLOW_ADDITIONAL_PROPERTIES,
+      )
     })
 
     it('should reject string-to-string dictionary body', () => {
@@ -387,7 +433,16 @@ describe('Koa Server (with noImplicitAdditionalProperties turned on)', () => {
       }
 
       const SUCCESS_BECAUSE_ANY_ACCEPTS_ADDITIONAL_PROPERTIES = 200
-      return verifyPostRequest(app, basePath + '/Validate/mapAny', data, (_err, _res) => null, SUCCESS_BECAUSE_ANY_ACCEPTS_ADDITIONAL_PROPERTIES)
+      return verifyPostRequest(
+        app,
+        basePath + '/Validate/mapAny',
+        data,
+        (_err, res) => {
+          expect(res.status).to.equal(SUCCESS_BECAUSE_ANY_ACCEPTS_ADDITIONAL_PROPERTIES)
+          expect(res.body).to.have.members(['0', 1, -1])
+        },
+        SUCCESS_BECAUSE_ANY_ACCEPTS_ADDITIONAL_PROPERTIES,
+      )
     })
 
     it('should validate string-to-any dictionary body with falsy values', () => {

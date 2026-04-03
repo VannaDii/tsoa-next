@@ -278,8 +278,9 @@ describe('Express Server', () => {
   })
 
   it('parses buffer parameter', () => {
-    return verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`, (_err, _res) => {
-      return
+    return verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`, (_err, res) => {
+      const returnedBuffer = Buffer.from(res.body.data ?? res.body)
+      expect(returnedBuffer.toString('utf8')).to.equal('testbuffer')
     })
   })
 
@@ -302,7 +303,16 @@ describe('Express Server', () => {
 
     return Promise.all(
       invalidValues.map((value: any) => {
-        return verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest/Object',
+          { obj: value },
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.be.a('string')
+          },
+          400,
+        )
       }),
     )
   })
@@ -354,8 +364,9 @@ describe('Express Server', () => {
       app,
       path,
       data,
-      (_err, _res) => {
-        return
+      (_err, res) => {
+        expect(res.status).to.equal(201)
+        expect(res.body).to.deep.equal(data)
       },
       201,
     )
@@ -441,7 +452,16 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('stringValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -480,7 +500,16 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.dateValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('dateValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -493,7 +522,16 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.numberValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('numberValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -1396,10 +1434,6 @@ describe('Express Server', () => {
   })
 
   describe('Security', () => {
-    const emptyHandler = (_err: unknown, _res: unknown) => {
-      // This is an empty handler
-    }
-
     describe('Only API key', () => {
       it('returns the correct user for user id 1', () => {
         return verifyGetRequest(app, basePath + '/SecurityTest?access_token=abc123456', (_err, res) => {
@@ -1433,19 +1467,43 @@ describe('Express Server', () => {
       })
 
       it('returns 401 for an invalid key', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=invalid', emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + '/SecurityTest?access_token=invalid',
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('api_key')
+          },
+          401,
+        )
       })
     })
 
     describe('API key or tsoa auth', () => {
       it('returns 200 if the API key is correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=abc123456&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body.id).to.equal(1)
+          },
+          200,
+        )
       })
 
       it('returns 200 if tsoa auth is correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body).to.deep.equal({})
+          },
+          200,
+        )
       })
 
       it('returns 401 if neither API key nor tsoa auth are correct, last error to resolve is returned', () => {
@@ -1464,17 +1522,41 @@ describe('Express Server', () => {
     describe('API key and tsoa auth', () => {
       it('returns 200 if API and tsoa auth are correct', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=abc123456&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body.id).to.equal(1)
+          },
+          200,
+        )
       })
 
       it('returns 401 if API key is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=abc123456&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('other')
+          },
+          401,
+        )
       })
 
       it('returns 401 if tsoa auth is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('api_key')
+          },
+          401,
+        )
       })
     })
   })

@@ -1,7 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
 import { server } from '../fixtures/koa-multer-options/server'
-import * as os from 'os'
 import { unlinkSync, writeFileSync } from 'fs'
 import { verifyFileUploadRequest } from './utils'
 
@@ -20,7 +19,7 @@ describe('Koa Server (with multerOpts)', () => {
         expect(res.body.originalname).to.equal('package.json')
         expect(res.body.encoding).to.be.not.undefined
         expect(res.body.mimetype).to.equal('application/json')
-        expect(res.body.path).to.satisfy((value: string) => value.startsWith(os.tmpdir()))
+        expect(res.body.path).to.equal(`${res.body.destination}/${res.body.filename}`)
       })
     })
 
@@ -32,7 +31,7 @@ describe('Koa Server (with multerOpts)', () => {
         expect(res.body.fieldname).to.equal('someFile')
         expect(res.body.originalname).to.equal('lessThan8mb')
         expect(res.body.encoding).to.be.not.undefined
-        expect(res.body.path).to.satisfy((value: string) => value.startsWith(os.tmpdir()))
+        expect(res.body.path).to.equal(`${res.body.destination}/${res.body.filename}`)
         unlinkSync('./lessThan8mb')
       })
     })
@@ -56,5 +55,8 @@ describe('Koa Server (with multerOpts)', () => {
     })
   })
 
-  it('shutdown server', () => server.close())
+  it('shutdown server', () => {
+    expect(server.listening).to.equal(true)
+    server.close()
+  })
 })
