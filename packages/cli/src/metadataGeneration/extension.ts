@@ -7,7 +7,7 @@ import { safeFromJson } from '../utils/jsonUtils'
 export function getExtensions(decorators: ts.Identifier[], metadataGenerator: MetadataGenerator): Tsoa.Extension[] {
   const extensions: Tsoa.Extension[] = decorators.map(extensionDecorator => {
     if (!ts.isCallExpression(extensionDecorator.parent)) {
-      throw new Error('The parent of the @Extension is not a CallExpression. Are you using it in the right place?')
+      throw new TypeError('The parent of the @Extension is not a CallExpression. Are you using it in the right place?')
     }
 
     const [decoratorKeyArg, decoratorValueArg] = extensionDecorator.parent.arguments
@@ -19,7 +19,7 @@ export function getExtensions(decorators: ts.Identifier[], metadataGenerator: Me
     const attributeKey = ts.isIdentifier(decoratorKeyArg) ? getInitializerValue(decoratorKeyArg, metadataGenerator.typeChecker) : decoratorKeyArg.text
 
     if (typeof attributeKey !== 'string') {
-      throw new Error('The first argument of @Extension must be a string')
+      throw new TypeError('The first argument of @Extension must be a string')
     }
 
     if (!decoratorValueArg) {
