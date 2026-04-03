@@ -9,7 +9,7 @@ function getJsDocs(node: ts.Node): ts.JSDoc[] {
 
 export function getJSDocDescription(node: ts.Node) {
   const jsDocs = getJsDocs(node)
-  if (!jsDocs || !jsDocs.length) {
+  if (jsDocs.length === 0) {
     return undefined
   }
 
@@ -18,17 +18,13 @@ export function getJSDocDescription(node: ts.Node) {
 
 export function getJSDocComment(node: ts.Node, tagName: string) {
   const comments = getJSDocComments(node, tagName)
-  if (comments && comments.length !== 0) {
-    return comments[0]
-  }
-
-  return
+  return comments?.[0]
 }
 
 export function getJSDocComments(node: ts.Node, tagName: string) {
   const tags = getJSDocTags(node, tag => tag.tagName.text === tagName || (tag.tagName.escapedText as string) === tagName)
   if (tags.length === 0) {
-    return
+    return undefined
   }
   const comments: string[] = []
   tags.forEach(tag => {
@@ -76,11 +72,7 @@ export function getJSDocTags(node: ts.Node, isMatching: (tag: ts.JSDocTag) => bo
 }
 
 export function isExistJSDocTag(node: ts.Node, isMatching: (tag: ts.JSDocTag) => boolean) {
-  const tags = getJSDocTags(node, isMatching)
-  if (tags.length === 0) {
-    return false
-  }
-  return true
+  return getJSDocTags(node, isMatching).length > 0
 }
 
 export function commentToString(comment?: string | ts.NodeArray<ts.JSDocText | ts.JSDocLink | ts.JSDocComment>): string | undefined {

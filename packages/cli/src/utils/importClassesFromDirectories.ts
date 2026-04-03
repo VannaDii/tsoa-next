@@ -1,4 +1,4 @@
-import { extname } from 'path'
+import { extname } from 'node:path'
 import { sync } from 'glob'
 
 /**
@@ -13,6 +13,6 @@ export function importClassesFromDirectories(directories: string[], formats = ['
 
   return allFiles.filter(file => {
     const dtsExtension = file.substring(file.length - 5, file.length)
-    return formats.indexOf(extname(file)) !== -1 && dtsExtension !== '.d.ts'
+    return formats.includes(extname(file)) && dtsExtension !== '.d.ts'
   })
 }

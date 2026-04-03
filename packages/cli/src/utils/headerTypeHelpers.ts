@@ -5,7 +5,7 @@ import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
 import { TypeResolver } from '../metadataGeneration/typeResolver'
 
 export function getHeaderType(typeArgumentNodes: NodeArray<TypeNode> | undefined, index: number, metadataGenerator: MetadataGenerator): Tsoa.HeaderType | undefined {
-  if (!typeArgumentNodes || !typeArgumentNodes[index]) {
+  if (!typeArgumentNodes?.[index]) {
     return undefined
   }
 
@@ -22,7 +22,7 @@ export function getHeaderType(typeArgumentNodes: NodeArray<TypeNode> | undefined
 
 export function isSupportedHeaderDataType(parameterType: Tsoa.Type): parameterType is Tsoa.HeaderType {
   const supportedPathDataTypes: Tsoa.TypeStringLiteral[] = ['nestedObjectLiteral', 'refObject']
-  if (supportedPathDataTypes.find(t => t === parameterType.dataType)) {
+  if (supportedPathDataTypes.some(t => t === parameterType.dataType)) {
     return true
   }
 

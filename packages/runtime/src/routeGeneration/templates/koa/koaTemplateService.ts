@@ -1,9 +1,8 @@
 import type { Context, Next } from 'koa'
 
 import { Controller } from '../../../interfaces/controller'
-import { FieldErrors } from '../../templateHelpers'
 import { TsoaRoute } from '../../tsoa-route'
-import { ValidateError } from '../../templateHelpers'
+import { FieldErrors, ValidateError } from '../../templateHelpers'
 import { TemplateService } from '../templateService'
 
 const koaTsoaResponsed = Symbol('@tsoa:template_service:koa:is_responsed')
@@ -103,9 +102,9 @@ export class KoaTemplateService extends TemplateService<KoaApiHandlerParameters,
           return result
         }
         case 'formData': {
-          const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array && p.array.dataType === 'file'))
+          const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array?.dataType === 'file'))
           const contextRequest = context.request as KoaRequestWithBody
-          if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
+          if ((param.dataType === 'file' || (param.dataType === 'array' && param.array?.dataType === 'file')) && files.length > 0) {
             const rawFileValue: unknown = contextRequest.files?.[name]
             let fileValue: unknown = rawFileValue
             if (param.dataType !== 'array' && Array.isArray(rawFileValue)) {

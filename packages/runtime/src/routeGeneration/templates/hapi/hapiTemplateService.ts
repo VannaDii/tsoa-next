@@ -2,9 +2,8 @@ import { Request as HRequest, ResponseToolkit as HResponse } from '@hapi/hapi'
 import type { Payload } from '@hapi/boom'
 
 import { Controller } from '../../../interfaces/controller'
-import { FieldErrors } from '../../templateHelpers'
 import { TsoaRoute } from '../../tsoa-route'
-import { ValidateError } from '../../templateHelpers'
+import { FieldErrors, ValidateError } from '../../templateHelpers'
 import { TemplateService } from '../templateService'
 import { AdditionalProps } from '../../additionalProps'
 

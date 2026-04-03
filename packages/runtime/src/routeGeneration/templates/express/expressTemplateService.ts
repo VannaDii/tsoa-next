@@ -1,11 +1,10 @@
 import { Request as ExRequest, Response as ExResponse, NextFunction as ExNext } from 'express'
+import { Readable } from 'node:stream'
 
 import { Controller } from '../../../interfaces/controller'
-import { FieldErrors } from '../../templateHelpers'
 import { TsoaRoute } from '../../tsoa-route'
-import { ValidateError } from '../../templateHelpers'
+import { FieldErrors, ValidateError } from '../../templateHelpers'
 import { TemplateService } from '../templateService'
-import { Readable } from 'node:stream'
 
 type HeaderRecord = Record<string, string | string[] | undefined>
 type ExpressResponder = (status: number | undefined, data: unknown, headers: HeaderRecord) => void
@@ -95,8 +94,8 @@ export class ExpressTemplateService extends TemplateService<ExpressApiHandlerPar
           return bodyPropArgs
         }
         case 'formData': {
-          const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array && p.array.dataType === 'file'))
-          if ((param.dataType === 'file' || (param.dataType === 'array' && param.array && param.array.dataType === 'file')) && files.length > 0) {
+          const files = Object.values(args).filter(p => p.dataType === 'file' || (p.dataType === 'array' && p.array?.dataType === 'file'))
+          if ((param.dataType === 'file' || (param.dataType === 'array' && param.array?.dataType === 'file')) && files.length > 0) {
             const requestFiles = request.files as { [fileName: string]: Express.Multer.File[] } | undefined
             const fileValue = param.dataType === 'array' ? requestFiles?.[name] : requestFiles?.[name]?.[0]
             const fileArgs = this.validationService.ValidateParam(param, fileValue, name, fieldErrors, false, undefined, metadata)

@@ -1,6 +1,6 @@
-import * as fs from 'fs'
 import * as handlebars from 'handlebars'
-import * as path from 'path'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
 import { fsReadFile, fsWriteFile } from '../utils/fs'
