@@ -1,11 +1,10 @@
 import * as ts from 'typescript'
 import type { ExtendedRoutesConfig, RouteGeneratorModule } from '../api'
 import { MetadataGenerator } from '../metadataGeneration/metadataGenerator'
-import { Tsoa } from '@tsoa-next/runtime'
+import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
 import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
-import path = require('path')
-import { Config as BaseConfig } from '@tsoa-next/runtime'
+import * as path from 'node:path'
 
 export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   routesConfig: Config,
@@ -17,9 +16,7 @@ export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   metadata?: Tsoa.Metadata,
   defaultNumberType?: BaseConfig['defaultNumberType'],
 ) {
-  if (!metadata) {
-    metadata = new MetadataGenerator(routesConfig.entryFile, compilerOptions, ignorePaths, routesConfig.controllerPathGlobs, routesConfig.rootSecurity, defaultNumberType).Generate()
-  }
+  metadata ??= new MetadataGenerator(routesConfig.entryFile, compilerOptions, ignorePaths, routesConfig.controllerPathGlobs, routesConfig.rootSecurity, defaultNumberType).Generate()
 
   const routeGenerator = await getRouteGenerator(metadata, routesConfig)
 
@@ -38,6 +35,11 @@ export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   return metadata
 }
 
+function normalizeRelativeImportPath(targetPath: string): string {
+  const relativePath = path.relative(__dirname, path.resolve(targetPath)).replaceAll(path.sep, '/')
+  return relativePath.startsWith('.') ? relativePath : `./${relativePath}`
+}
+
 async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: Tsoa.Metadata, routesConfig: Config) {
   // default route generator for express/koa/hapi
   // custom route generator
@@ -48,20 +50,23 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
         // try as a module import
         const module = (await import(routeGenerator)) as RouteGeneratorModule<Config>
         return new module.default(metadata, routesConfig)
-      } catch (_) {
-        // try to find a relative import path
-        const relativePath = path.relative(__dirname, routeGenerator)
-        const module = (await import(relativePath)) as RouteGeneratorModule<Config>
-        return new module.default(metadata, routesConfig)
+      } catch (moduleImportError) {
+        try {
+          const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
+          const module = (await import(relativeImportPath)) as RouteGeneratorModule<Config>
+          return new module.default(metadata, routesConfig)
+        } catch (relativeImportError) {
+          throw new AggregateError([moduleImportError, relativeImportError], `Failed to load route generator '${routeGenerator}' as a module import or relative path.`)
+        }
       }
-    } else {
-      return new routeGenerator(metadata, routesConfig)
     }
+
+    return new routeGenerator(metadata, routesConfig)
   }
-  if (routesConfig.middleware !== undefined || routesConfig.middlewareTemplate !== undefined) {
-    return new DefaultRouteGenerator(metadata, routesConfig)
-  } else {
+
+  if (routesConfig.middleware === undefined && routesConfig.middlewareTemplate === undefined) {
     routesConfig.middleware = 'express'
-    return new DefaultRouteGenerator(metadata, routesConfig)
   }
+
+  return new DefaultRouteGenerator(metadata, routesConfig)
 }

@@ -52,11 +52,9 @@ export class PrimitiveTransformer extends Transformer {
       return { dataType: defaultNumberType }
     }
 
-    const tags = partentJsDocTagNames.filter(name => {
-      return ['isInt', 'isLong', 'isFloat', 'isDouble'].some(m => m === name)
-    })
+    const tag = partentJsDocTagNames.find(name => ['isInt', 'isLong', 'isFloat', 'isDouble'].includes(name))
 
-    switch (tags[0]) {
+    switch (tag) {
       case 'isInt':
         return { dataType: 'integer' }
       case 'isLong':

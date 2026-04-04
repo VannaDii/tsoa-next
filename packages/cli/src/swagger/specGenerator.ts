@@ -177,7 +177,7 @@ export abstract class SpecGenerator {
       ...(title && { title }),
       properties,
       ...(additionalProperties && { additionalProperties }),
-      ...(required && required.length && { required }),
+      ...(required.length > 0 && { required }),
       type: 'object',
     }
   }

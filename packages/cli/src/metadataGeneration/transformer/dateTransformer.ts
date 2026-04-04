@@ -9,14 +9,12 @@ export class DateTransformer extends Transformer {
     if (!parentNode) {
       return { dataType: 'datetime' }
     }
-    const tags = getJSDocTagNames(parentNode).filter(name => {
-      return ['isDate', 'isDateTime'].some(m => m === name)
-    })
+    const tag = getJSDocTagNames(parentNode).find(name => ['isDate', 'isDateTime'].includes(name))
 
-    if (tags.length === 0) {
+    if (!tag) {
       return { dataType: 'datetime' }
     }
-    switch (tags[0]) {
+    switch (tag) {
       case 'isDate':
         return { dataType: 'date' }
       case 'isDateTime':

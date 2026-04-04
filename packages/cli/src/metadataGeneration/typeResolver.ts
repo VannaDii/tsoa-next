@@ -34,6 +34,7 @@ type DeclarationWithTypeParameters = ts.Declaration & {
 type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 
 const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
+const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
 
 const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
   const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
@@ -45,7 +46,7 @@ const isAsciiLetter = (char: string | undefined): boolean => {
     return false
   }
 
-  const code = char.charCodeAt(0)
+  const code = char.codePointAt(0) ?? -1
   return (code >= 65 && code <= 90) || (code >= 97 && code <= 122)
 }
 
@@ -54,7 +55,7 @@ const isRefTypeTokenCharacter = (char: string | undefined): boolean => {
     return false
   }
 
-  const code = char.charCodeAt(0)
+  const code = char.codePointAt(0) ?? -1
   return isAsciiLetter(char) || (code >= 48 && code <= 57) || char === '_'
 }
 
@@ -115,7 +116,7 @@ const replaceIndexedAccessSegments = (value: string): string => {
       continue
     }
 
-    const previousCharacter = formatted[formatted.length - 1]
+    const previousCharacter = (formatted as string & { at(index: number): string | undefined }).at(-1)
     if (!(isAsciiLetter(previousCharacter) || previousCharacter === '}' || previousCharacter === ']' || previousCharacter === ')')) {
       formatted += value[index]
       index += 1
@@ -353,7 +354,12 @@ export class TypeResolver {
               const description = comments.length ? ts.displayPartsToString(comments) : undefined
 
               const initializer = parent && hasInitializer(parent) ? parent.initializer : undefined
-              const def = initializer ? getInitializerValue(initializer, this.current.typeChecker) : parent ? TypeResolver.getDefault(parent) : undefined
+              let def: unknown
+              if (initializer) {
+                def = getInitializerValue(initializer, this.current.typeChecker)
+              } else if (parent) {
+                def = TypeResolver.getDefault(parent)
+              }
 
               // Push property
               return {
@@ -514,7 +520,7 @@ export class TypeResolver {
           }
 
           // Warn on nonsense (`number`, `typeof Symbol.iterator`)
-          if (type.types.find(t => !t.isLiteral()) !== undefined) {
+          if (type.types.some(t => !t.isLiteral())) {
             const problems = type.types.filter(t => !t.isLiteral()).map(t => typeChecker.typeToString(t))
             console.warn(new GenerateMetaDataWarning(`Skipped non-literal type(s) ${problems.join(', ')}`, typeNode).toString())
           }
@@ -580,7 +586,7 @@ export class TypeResolver {
       return new TypeResolver(typeChecker.typeToTypeNode(type, objectType, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
     } else if (ts.isLiteralTypeNode(indexType) && (ts.isStringLiteral(indexType.literal) || ts.isNumericLiteral(indexType.literal))) {
       // Indexed by literal
-      const hasType = (node: ts.Node | undefined): node is ts.HasType => node !== undefined && Object.prototype.hasOwnProperty.call(node, 'type')
+      const hasType = (node: ts.Node | undefined): node is ts.HasType => node !== undefined && objectHasOwn(node, 'type')
       const symbol = typeChecker.getPropertyOfType(typeChecker.getTypeFromTypeNode(objectType), indexType.literal.text)
       throwUnless(symbol, new GenerateMetadataError(`Could not determine the keys on ${typeChecker.typeToString(typeChecker.getTypeFromTypeNode(objectType))}`, typeNode))
       if (hasType(symbol.valueDeclaration) && symbol.valueDeclaration.type) {
@@ -819,15 +825,15 @@ export class TypeResolver {
       case ts.SyntaxKind.StringLiteral:
         return typeNode.literal.text
       case ts.SyntaxKind.NumericLiteral:
-        return parseFloat(typeNode.literal.text)
+        return Number.parseFloat(typeNode.literal.text)
       case ts.SyntaxKind.PrefixUnaryExpression:
         // make sure to only handle the MinusToken here
         throwUnless((typeNode.literal as ts.PrefixUnaryExpression).operator === ts.SyntaxKind.MinusToken, new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
-        return parseFloat(typeNode.literal.getText())
+        return Number.parseFloat(typeNode.literal.getText())
       case ts.SyntaxKind.NullKeyword:
         return null
       default:
-        throwUnless(Object.prototype.hasOwnProperty.call(typeNode.literal, 'text'), new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
+        throwUnless(objectHasOwn(typeNode.literal, 'text'), new GenerateMetadataError(`Couldn't resolve literal node: ${typeNode.literal.getText()}`))
         return (typeNode.literal as ts.LiteralExpression).text
     }
   }
@@ -985,7 +991,7 @@ export class TypeResolver {
     const format = this.getNodeFormat(arg)
     const example = this.getNodeExample(arg)
     const extensions = this.getNodeExtension(arg)
-    const isIgnored = getJSDocTagNames(arg).some(tag => tag === 'ignore')
+    const isIgnored = getJSDocTagNames(arg).includes('ignore')
 
     const jsonObj = {
       default: def,
@@ -1241,15 +1247,16 @@ export class TypeResolver {
   //This function is not invertable, so it's possible, that 2 type expressions have the same refTypeName.
   private getRefTypeName(name: string): string {
     let preformattedName = name //Preformatted name handles most cases
-      .replace(/<|>/g, '_')
+      .replaceAll('<', '_')
+      .replaceAll('>', '_')
       .replace(/\s+/g, '')
-      .replace(/,/g, '.')
+      .replaceAll(',', '.')
       .replace(/'([^']*)'/g, '$1')
       .replace(/"([^"]*)"/g, '$1')
-      .replace(/&/g, '-and-')
-      .replace(/\|/g, '-or-')
-      .replace(/\[\]/g, '-Array')
-      .replace(/{|}/g, '_') // SuccessResponse_{indexesCreated-number}_ -> SuccessResponse__indexesCreated-number__
+      .replaceAll('&', '-and-')
+      .replaceAll('|', '-or-')
+      .replaceAll('[]', '-Array')
+      .replaceAll(/[{}]/g, '_') // SuccessResponse_{indexesCreated-number}_ -> SuccessResponse__indexesCreated-number__
 
     preformattedName = replaceTypeLiteralPropertySeparators(preformattedName) // SuccessResponse_indexesCreated:number_ -> SuccessResponse_indexesCreated-number_
     preformattedName = preformattedName.replace(/;/g, '--')
@@ -1257,9 +1264,9 @@ export class TypeResolver {
 
     //Safety fixes to replace all characters which are not accepted by swagger ui
     let formattedName = preformattedName.replace(/[^A-Za-z0-9\-._]/g, match => {
-      return `_${match.charCodeAt(0)}_`
+      return `_${match.codePointAt(0) ?? 0}_`
     })
-    formattedName = formattedName.replace(/92_r_92_n/g, '92_n') //Windows uses \r\n, but linux uses \n.
+    formattedName = formattedName.replaceAll('92_r_92_n', '92_n') //Windows uses \r\n, but linux uses \n.
 
     return formattedName
   }
@@ -1299,7 +1306,7 @@ export class TypeResolver {
     }
 
     // Handle built-in types that don't have declarations in user code
-    if (!symbol || !symbol.getDeclarations) {
+    if (!symbol?.getDeclarations) {
       return []
     }
 
@@ -1324,7 +1331,7 @@ export class TypeResolver {
     if (modelTypes.length > 1) {
       // remove types that are from typescript e.g. 'Account'
       modelTypes = modelTypes.filter(modelType => {
-        return modelType.getSourceFile().fileName.replace(/\\/g, '/').toLowerCase().indexOf('node_modules/typescript') <= -1
+        return modelType.getSourceFile().fileName.replaceAll('\\', '/').toLowerCase().indexOf('node_modules/typescript') <= -1
       })
 
       modelTypes = this.getDesignatedModels(modelTypes, typeName)
@@ -1362,7 +1369,7 @@ export class TypeResolver {
 
     const declarations = symbols.flatMap(symbol => this.getUsableDeclarationsFromSymbol(symbol))
     const uniqueDeclarations = declarations.filter((declaration, index, allDeclarations) => {
-      return allDeclarations.findIndex(candidate => candidate === declaration) === index
+      return allDeclarations.indexOf(declaration) === index
     })
 
     return uniqueDeclarations.map(declaration => {
@@ -1433,19 +1440,19 @@ export class TypeResolver {
     return undefined
   }
 
-  private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.EntityName): Context {
+  private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.Node): Context {
     let newContext: Context = {}
 
-    // Handle cases where targetEntity might be an inline object type
-    // Inline object types don't have declarations, so we need to handle them differently
-    let declarations: UsableDeclarationWithoutPropertySignature[]
-    try {
-      declarations = this.getModelTypeDeclarations(targetEntity)
-    } catch (_) {
-      // If we can't get declarations (e.g., inline object type),
-      // we can't process type parameters, so return empty context
+    // Inline object types don't contribute generic declarations, so they map to an empty context.
+    if (!this.current.typeChecker) {
       return newContext
     }
+
+    if (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity)) {
+      return newContext
+    }
+
+    const declarations = this.getModelTypeDeclarations(targetEntity)
 
     const firstDeclaration = declarations[0] as DeclarationWithTypeParameters | undefined
     const typeParameters = firstDeclaration?.typeParameters
@@ -1453,7 +1460,7 @@ export class TypeResolver {
     if (typeParameters) {
       for (let index = 0; index < typeParameters.length; index++) {
         const typeParameter = typeParameters[index]
-        const typeArg = type.typeArguments && type.typeArguments[index]
+        const typeArg = type.typeArguments?.[index]
         let resolvedType: ts.TypeNode
         let name: string | undefined
         // Argument may be a forward reference from context
@@ -1480,6 +1487,55 @@ export class TypeResolver {
     return newContext
   }
 
+  private getReferenceAliasProperties(referenceType: Tsoa.RefAliasType): Tsoa.Property[] {
+    let type: Tsoa.Type = referenceType
+    while (type.dataType === 'refAlias') {
+      type = type.type
+    }
+
+    if (type.dataType === 'refObject' || type.dataType === 'nestedObjectLiteral') {
+      return type.properties
+    }
+
+    return []
+  }
+
+  private appendInheritedProperties(properties: Tsoa.Property[], referenceType: Tsoa.ReferenceType | undefined): Tsoa.Property[] {
+    if (!referenceType || referenceType.dataType === 'refEnum') {
+      return properties
+    }
+
+    if (referenceType.dataType === 'refAlias') {
+      return [...properties, ...this.getReferenceAliasProperties(referenceType)]
+    }
+
+    if (referenceType.dataType === 'refObject') {
+      return [...properties, ...(referenceType.properties ?? [])]
+    }
+
+    return assertNever(referenceType)
+  }
+
+  private getInheritedReferenceType(typeNode: ts.ExpressionWithTypeArguments): Tsoa.ReferenceType | undefined {
+    if (!ts.isIdentifier(typeNode.expression) && !ts.isQualifiedName(typeNode.expression)) {
+      return undefined
+    }
+
+    const resetContext = this.context
+    this.context = this.typeArgumentsToContext(typeNode, typeNode.expression)
+
+    try {
+      return this.getReferenceType(typeNode, false)
+    } catch (error) {
+      if (error instanceof GenerateMetadataError) {
+        return undefined
+      }
+      throw error
+    } finally {
+      this.context = resetContext
+    }
+  }
+
   private getModelInheritedProperties(modelTypeDeclaration: Exclude<UsableDeclaration, ts.PropertySignature | ts.TypeAliasDeclaration | ts.EnumMember>): Tsoa.Property[] {
     let properties: Tsoa.Property[] = []
 
@@ -1494,46 +1550,7 @@ export class TypeResolver {
       }
 
       for (const t of clause.types) {
-        const baseEntityName = t.expression as ts.EntityName
-
-        // create subContext
-        const resetCtx = this.context
-        this.context = this.typeArgumentsToContext(t, baseEntityName)
-
-        let referenceType: Tsoa.ReferenceType | undefined
-        try {
-          referenceType = this.getReferenceType(t, false)
-        } catch (error) {
-          if (error instanceof GenerateMetadataError) {
-            this.context = resetCtx
-            continue
-          }
-          throw error
-        }
-
-        if (referenceType) {
-          if (referenceType.dataType === 'refEnum') {
-            // since it doesn't have properties to iterate over, then we don't do anything with it
-          } else if (referenceType.dataType === 'refAlias') {
-            let type: Tsoa.Type = referenceType
-            while (type.dataType === 'refAlias') {
-              type = type.type
-            }
-
-            if (type.dataType === 'refObject') {
-              properties = [...properties, ...type.properties]
-            } else if (type.dataType === 'nestedObjectLiteral') {
-              properties = [...properties, ...type.properties]
-            }
-          } else if (referenceType.dataType === 'refObject') {
-            ;(referenceType.properties || []).forEach(property => properties.push(property))
-          } else {
-            assertNever(referenceType)
-          }
-        }
-
-        // reset subContext
-        this.context = resetCtx
+        properties = this.appendInheritedProperties(properties, this.getInheritedReferenceType(t))
       }
     }
 
@@ -1547,8 +1564,8 @@ export class TypeResolver {
     }
 
     /**
-     * TODO: Workaround for what seems like a bug in the compiler
-     * Warrants more investigation and possibly a PR against typescript
+     * Workaround for a TypeScript compiler quirk tracked for follow-up investigation.
+     * See https://github.com/tsoa-next/tsoa-next/issues for related metadata parsing context.
      */
     if (node.kind === ts.SyntaxKind.Parameter) {
       // TypeScript won't parse jsdoc if the flag is 4, i.e. 'Property'
@@ -1574,9 +1591,11 @@ export class TypeResolver {
   public getPropertyName(prop: ts.PropertySignature | ts.PropertyDeclaration | ts.ParameterDeclaration): string {
     if (ts.isComputedPropertyName(prop.name) && ts.isPropertyAccessExpression(prop.name.expression)) {
       const initializerValue = getInitializerValue(prop.name.expression, this.current.typeChecker)
-      if (initializerValue) {
-        return initializerValue?.toString()
+      if (typeof initializerValue === 'string' || typeof initializerValue === 'number' || typeof initializerValue === 'boolean') {
+        return `${initializerValue}`
       }
+
+      return prop.name.expression.getText()
     }
     return (prop.name as ts.Identifier).text
   }

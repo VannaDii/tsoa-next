@@ -1,11 +1,11 @@
+import { createNoopMethodDecorator, createNoopParameterDecorator } from './noop'
+
 /**
  * Inject http Body
  *  @param {string} [name] properties name in body object
  */
 export function Body(): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('body')
 }
 
 /**
@@ -14,18 +14,14 @@ export function Body(): ParameterDecorator {
  * @param {string} [name] The name of the body parameter
  */
 export function BodyProp(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('body-prop')
 }
 
 /**
  * Inject http request
  */
 export function Request(): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('request')
 }
 
 /**
@@ -34,9 +30,7 @@ export function Request(): ParameterDecorator {
  * @param {name} [name] The name of the request parameter
  */
 export function RequestProp(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('request-prop')
 }
 
 /**
@@ -45,9 +39,7 @@ export function RequestProp(_name?: string): ParameterDecorator {
  * @param {string} [name] The name of the path parameter
  */
 export function Path(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('path')
 }
 
 /**
@@ -56,18 +48,14 @@ export function Path(_name?: string): ParameterDecorator {
  * @param {string} [name] The name of the query parameter
  */
 export function Query(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('query')
 }
 
 /**
  * Inject all query values in a single object
  */
 export function Queries(): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('queries')
 }
 
 /**
@@ -76,18 +64,14 @@ export function Queries(): ParameterDecorator {
  * @param {string} [name] The name of the header parameter
  */
 export function Header(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('header')
 }
 
 /**
  * Mark parameter as manually injected, which will not be generated
  */
 export function Inject(): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('inject')
 }
 
 /**
@@ -96,9 +80,7 @@ export function Inject(): ParameterDecorator {
  * @param {string} [name] The name of the uploaded file parameter
  */
 export function UploadedFile(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('uploaded-file')
 }
 
 /**
@@ -107,9 +89,7 @@ export function UploadedFile(_name?: string): ParameterDecorator {
  * @param {string} [name] The name of the uploaded files parameter
  */
 export function UploadedFiles(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('uploaded-files')
 }
 
 /**
@@ -118,9 +98,7 @@ export function UploadedFiles(_name?: string): ParameterDecorator {
  * @param {string} [name] The name of the uploaded files parameter
  */
 export function FormField(_name?: string): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('form-field')
 }
 
 /**
@@ -131,7 +109,5 @@ export function FormField(_name?: string): ParameterDecorator {
  * @link https://swagger.io/docs/specification/describing-request-body/
  */
 export function Consumes(_value: string): MethodDecorator {
-  return () => {
-    return
-  }
+  return createNoopMethodDecorator('consumes')
 }

@@ -1,12 +1,16 @@
 import { expect } from 'chai'
 import 'mocha'
+import { unlinkSync, writeFileSync } from 'node:fs'
+import { join, normalize } from 'node:path'
 import { server } from '../fixtures/koa-multer-options/server'
-import * as os from 'os'
-import { unlinkSync, writeFileSync } from 'fs'
 import { verifyFileUploadRequest } from './utils'
 
 const app = server
 const basePath = '/v1'
+
+const expectUploadedFilePath = (body: { destination: string; filename: string; path: string }) => {
+  expect(normalize(body.path)).to.equal(normalize(join(body.destination, body.filename)))
+}
 
 describe('Koa Server (with multerOpts)', () => {
   describe('file upload', function () {
@@ -20,7 +24,7 @@ describe('Koa Server (with multerOpts)', () => {
         expect(res.body.originalname).to.equal('package.json')
         expect(res.body.encoding).to.be.not.undefined
         expect(res.body.mimetype).to.equal('application/json')
-        expect(res.body.path).to.satisfy((value: string) => value.startsWith(os.tmpdir()))
+        expectUploadedFilePath(res.body)
       })
     })
 
@@ -32,7 +36,7 @@ describe('Koa Server (with multerOpts)', () => {
         expect(res.body.fieldname).to.equal('someFile')
         expect(res.body.originalname).to.equal('lessThan8mb')
         expect(res.body.encoding).to.be.not.undefined
-        expect(res.body.path).to.satisfy((value: string) => value.startsWith(os.tmpdir()))
+        expectUploadedFilePath(res.body)
         unlinkSync('./lessThan8mb')
       })
     })
@@ -56,5 +60,11 @@ describe('Koa Server (with multerOpts)', () => {
     })
   })
 
-  it('shutdown server', () => server.close())
+  it('shutdown server', done => {
+    expect(server.listening).to.equal(true)
+    server.close(() => {
+      expect(server.listening).to.equal(false)
+      done()
+    })
+  })
 })

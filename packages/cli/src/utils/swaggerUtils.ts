@@ -14,6 +14,14 @@ export function getValue(type: 'string' | 'number' | 'integer' | 'boolean' | und
       return !!member
     case 'string':
     default:
-      return String(member)
+      if (typeof member === 'string') {
+        return member
+      }
+
+      if (typeof member === 'number' || typeof member === 'boolean') {
+        return String(member)
+      }
+
+      return JSON.stringify(member)
   }
 }

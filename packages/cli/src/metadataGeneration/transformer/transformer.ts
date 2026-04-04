@@ -14,12 +14,9 @@ export abstract class Transformer {
   }
 
   protected hasStaticModifier(node: HasModifiers): boolean | undefined {
-    return (
-      node.modifiers &&
-      node.modifiers.some(modifier => {
-        return modifier.kind === SyntaxKind.StaticKeyword
-      })
-    )
+    return node.modifiers?.some(modifier => {
+      return modifier.kind === SyntaxKind.StaticKeyword
+    })
   }
 
   protected isAccessibleParameter(node: HasModifiers): boolean {

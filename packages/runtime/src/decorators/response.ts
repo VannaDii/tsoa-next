@@ -1,10 +1,9 @@
 import { IsValidHeader } from '../utils/isHeaderType'
 import { HttpStatusCodeLiteral, HttpStatusCodeStringLiteral, OtherValidOpenApiHttpStatusCode } from '../interfaces/response'
+import { createNoopClassMethodDecorator, createNoopMethodDecorator, createNoopParameterDecorator } from './noop'
 
 export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(_name: string | number, _description?: string, _produces?: string | string[]): MethodDecorator {
-  return () => {
-    return
-  }
+  return createNoopMethodDecorator('success-response')
 }
 
 export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderType> = object>(
@@ -13,9 +12,7 @@ export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderTyp
   _example?: ExampleType,
   _produces?: string | string[],
 ): MethodDecorator & ClassDecorator {
-  return () => {
-    return
-  }
+  return createNoopClassMethodDecorator('response')
 }
 
 /**
@@ -24,9 +21,7 @@ export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderTyp
  * The type of the responder function should be annotated `TsoaResponse<Status, Data, Headers>` in order to support OpenAPI documentation.
  */
 export function Res(): ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopParameterDecorator('res')
 }
 
 /**
@@ -36,7 +31,5 @@ export function Res(): ParameterDecorator {
  * @link https://swagger.io/docs/specification/media-types/
  */
 export function Produces(_value: string): MethodDecorator & ClassDecorator {
-  return () => {
-    return
-  }
+  return createNoopClassMethodDecorator('produces')
 }

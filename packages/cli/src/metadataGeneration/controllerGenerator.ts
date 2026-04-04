@@ -79,7 +79,7 @@ export class ControllerGenerator {
 
     // Process from base to derived so derived classes can override inherited names.
     const methodsByName = new Map<string, MethodDeclaration>()
-    inheritanceChain.reverse().forEach(classDeclaration => {
+    ;[...inheritanceChain].reverse().forEach(classDeclaration => {
       classDeclaration.members.filter(isMethodDeclaration).forEach(method => {
         const key = this.getMethodKey(method)
         if (!key) {
@@ -172,10 +172,7 @@ export class ControllerGenerator {
       }
 
       const moduleSpecifier = this.getImportModuleSpecifier(declaration)
-      if (!moduleSpecifier) {
-        return false
-      }
-      return moduleSpecifier.getText().replace(/['"]/g, '') === '@tsoa-next/runtime'
+      return moduleSpecifier === '@tsoa-next/runtime'
     })
   }
 
@@ -189,13 +186,13 @@ export class ControllerGenerator {
   private getImportModuleSpecifier(declaration: import('typescript').ImportSpecifier) {
     // ImportSpecifier -> NamedImports -> ImportClause -> ImportDeclaration
     const importDeclaration = declaration.parent.parent.parent
-    return 'moduleSpecifier' in importDeclaration ? importDeclaration.moduleSpecifier : undefined
+    return 'moduleSpecifier' in importDeclaration && isStringLiteralLike(importDeclaration.moduleSpecifier) ? importDeclaration.moduleSpecifier.text : undefined
   }
 
   private getPath() {
     const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Route', this.current.typeChecker)
-    if (!decorators || !decorators.length) {
-      return
+    if (!decorators?.length) {
+      return undefined
     }
     if (decorators.length > 1) {
       throw new GenerateMetadataError(`Only one Route decorator allowed in '${this.node.name!.text}' class.`)
@@ -209,7 +206,7 @@ export class ControllerGenerator {
 
   private getCommonResponses(): Tsoa.Response[] {
     const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Response', this.current.typeChecker)
-    if (!decorators || !decorators.length) {
+    if (!decorators?.length) {
       return []
     }
 
@@ -233,8 +230,8 @@ export class ControllerGenerator {
 
   private getTags() {
     const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Tags', this.current.typeChecker)
-    if (!decorators || !decorators.length) {
-      return
+    if (!decorators?.length) {
+      return undefined
     }
     if (decorators.length > 1) {
       throw new GenerateMetadataError(`Only one Tags decorator allowed in '${this.node.name!.text}' class.`)
@@ -258,7 +255,7 @@ export class ControllerGenerator {
       return []
     }
 
-    if (!securityDecorators || !securityDecorators.length) {
+    if (!securityDecorators?.length) {
       return this.parentSecurity
     }
 
@@ -267,7 +264,7 @@ export class ControllerGenerator {
 
   private getIsHidden(): boolean {
     const hiddenDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
-    if (!hiddenDecorators || !hiddenDecorators.length) {
+    if (!hiddenDecorators?.length) {
       return false
     }
     if (hiddenDecorators.length > 1) {

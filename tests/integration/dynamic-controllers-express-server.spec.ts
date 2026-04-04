@@ -191,43 +191,37 @@ describe('Express Server', () => {
     })
   })
 
-  it('should reject invalid additionalProperties', () => {
+  it('should reject invalid additionalProperties', async () => {
     const invalidValues = ['invalid', null, [], 1, { foo: null }, { foo: 1 }, { foo: [] }, { foo: {} }, { foo: { foo: 'bar' } }]
 
-    return Promise.all(
-      invalidValues.map((value: any) => {
-        return verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, (_err: any, _res: any) => null, 400)
-      }),
-    )
+    const responses = await Promise.all(invalidValues.map((value: any) => verifyPostRequest(app, basePath + '/PostTest/Object', { obj: value }, undefined, 400)))
+
+    expect(responses).to.have.length(invalidValues.length)
+    expect(responses.every(response => response.status === 400)).to.equal(true)
+    expect(responses.every(response => typeof response.text === 'string')).to.equal(true)
   })
 
   it('parses buffer parameter', () => {
-    return verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`, (_err, _res) => {
-      return
+    return verifyGetRequest(app, `${basePath}/GetTest/HandleBufferType?buffer=${base64image}`, (_err, res) => {
+      const returnedBuffer = Buffer.from(res.body.data ?? res.body)
+      expect(returnedBuffer.toString('utf8')).to.equal('testbuffer')
     })
   })
 
-  it('parsed body parameters', () => {
+  it('parsed body parameters', async () => {
     const data = getFakeModel()
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, res: any) => {
-      const model = res.body as TestModel
-      expect(model).to.deep.equal(data)
-    })
+    expect(response.body as TestModel).to.deep.equal(data)
   })
 
-  it('correctly returns status code', () => {
+  it('correctly returns status code', async () => {
     const data = getFakeModel()
     const path = basePath + '/PostTest/WithDifferentReturnCode'
-    return verifyPostRequest(
-      app,
-      path,
-      data,
-      (_err, _res) => {
-        return
-      },
-      201,
-    )
+    const response = await verifyPostRequest(app, path, data, undefined, 201)
+
+    expect(response.status).to.equal(201)
+    expect(response.body).to.deep.equal(data)
   })
 
   it('parses class model as body parameter', () => {
@@ -247,35 +241,32 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.stringValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('stringValue')
+          },
+          400,
+        )
       }),
     )
   })
 
-  it('should parse valid date', () => {
+  it('should parse valid date', async () => {
     const data = getFakeModel()
     data.dateValue = '2016-01-01T00:00:00Z' as any
+    const response = await verifyPostRequest(app, basePath + '/PostTest', data)
 
-    return verifyPostRequest(
-      app,
-      basePath + '/PostTest',
-      data,
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
-  it('should parse valid date as query param', () => {
-    return verifyGetRequest(
-      app,
-      basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z',
-      (_err: any, res: any) => {
-        expect(res.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
-      },
-      200,
-    )
+  it('should parse valid date as query param', async () => {
+    const response = await verifyGetRequest(app, basePath + '/GetTest/DateParam?date=2016-01-01T00:00:00Z')
+
+    expect(response.body.dateValue).to.equal('2016-01-01T00:00:00.000Z')
   })
 
   it('should reject invalid dates', () => {
@@ -286,7 +277,16 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.dateValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('dateValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -299,7 +299,16 @@ describe('Express Server', () => {
         const data = getFakeModel()
         data.numberValue = value
 
-        return verifyPostRequest(app, basePath + '/PostTest', data, (_err: any, _res: any) => null, 400)
+        return verifyPostRequest(
+          app,
+          basePath + '/PostTest',
+          data,
+          (err: any, res: any) => {
+            expect(res.status).to.equal(400)
+            expect(err.text).to.contain('numberValue')
+          },
+          400,
+        )
       }),
     )
   })
@@ -1063,7 +1072,7 @@ describe('Express Server', () => {
       })
     })
 
-    it('should validate string-to-any dictionary body with falsy values', () => {
+    it('should validate string-to-any dictionary body with falsy values', async () => {
       const data: ValidateMapStringToAny = {
         array: [],
         false: false,
@@ -1071,69 +1080,113 @@ describe('Express Server', () => {
         string: '',
         zero: 0,
       }
-      return verifyPostRequest(app, basePath + '/Validate/mapAny', data, (_err, res) => {
-        const response = res.body as any[]
-        expect(response.sort()).to.eql([[], '', 0, false, null])
-      })
+      const response = await verifyPostRequest(app, basePath + '/Validate/mapAny', data)
+
+      expect((response.body as any[]).sort()).to.eql([[], '', 0, false, null])
     })
   })
 
   describe('Security', () => {
-    const emptyHandler = (_err: unknown, _res: unknown) => {
-      // This is an empty handler
-    }
-
     describe('Only API key', () => {
-      it('returns the correct user for user id 1', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=abc123456', (_err, res) => {
-          const model = res.body as UserResponseModel
-          expect(model.id).to.equal(1)
-        })
+      it('returns the correct user for user id 1', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=abc123456')
+
+        expect((response.body as UserResponseModel).id).to.equal(1)
       })
 
-      it('returns the correct user for user id 2', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=xyz123456', (_err, res) => {
-          const model = res.body as UserResponseModel
-          expect(model.id).to.equal(2)
-        })
+      it('returns the correct user for user id 2', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=xyz123456')
+
+        expect((response.body as UserResponseModel).id).to.equal(2)
       })
 
-      it('returns 401 for an invalid key', () => {
-        return verifyGetRequest(app, basePath + '/SecurityTest?access_token=invalid', emptyHandler, 401)
+      it('returns 401 for an invalid key', async () => {
+        const response = await verifyGetRequest(app, basePath + '/SecurityTest?access_token=invalid', undefined, 401)
+
+        expect(response.status).to.equal(401)
+        expect(JSON.parse(response.text).message).to.equal('api_key')
       })
     })
 
     describe('API key or tsoa auth', () => {
       it('returns 200 if the API key is correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=abc123456&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body.id).to.equal(1)
+          },
+          200,
+        )
       })
 
       it('returns 200 if tsoa auth is correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body).to.deep.equal({})
+          },
+          200,
+        )
       })
 
       it('returns 401 if neither API key nor tsoa auth are correct', () => {
         const path = '/SecurityTest/OauthOrApiKey?access_token=invalid&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('api_key')
+          },
+          401,
+        )
       })
     })
 
     describe('API key and tsoa auth', () => {
       it('returns 200 if API and tsoa auth are correct', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=abc123456&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 200)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (_err, res) => {
+            expect(res.status).to.equal(200)
+            expect(res.body.id).to.equal(1)
+          },
+          200,
+        )
       })
 
       it('returns 401 if API key is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=abc123456&tsoa=invalid'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('other')
+          },
+          401,
+        )
       })
 
       it('returns 401 if tsoa auth is incorrect', () => {
         const path = '/SecurityTest/OauthAndApiKey?access_token=invalid&tsoa=abc123456'
-        return verifyGetRequest(app, basePath + path, emptyHandler, 401)
+        return verifyGetRequest(
+          app,
+          basePath + path,
+          (err, res) => {
+            expect(res.status).to.equal(401)
+            expect(JSON.parse(err.text).message).to.equal('api_key')
+          },
+          401,
+        )
       })
     })
   })

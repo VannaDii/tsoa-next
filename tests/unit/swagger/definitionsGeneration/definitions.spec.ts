@@ -67,15 +67,13 @@ describe('Definition generation', () => {
     return definition
   }
 
-  const ValidateOmitted = (name: string, chosenSpec: SpecAndName) => {
-    if (!chosenSpec.spec.definitions) {
-      return
-    }
+  const validateOmitted = (name: string, chosenSpec: SpecAndName) => {
+    expect(chosenSpec.spec.definitions?.[name], `${name} should not have been automatically generated in ${chosenSpec.specName}.`).to.be.undefined
+  }
 
-    const definition = chosenSpec.spec.definitions[name]
-    if (definition) {
-      throw new Error(`${name} should not have been automatically generated in ${chosenSpec.specName}.`)
-    }
+  const expectExistingValue = <T>(value: T | undefined, message: string): T => {
+    expect(value, message).to.exist
+    return value as T
   }
 
   function forSpec(chosenSpec: SpecAndName): string {
@@ -100,26 +98,15 @@ describe('Definition generation', () => {
   describe('Interface-based generation', () => {
     it('should not generate a definition for heritage interfaces', () => {
       const expectedModel = 'HeritageTestModel2'
-      let modelFound = false
+      const notExpectedModels = ['HeritageBaseModel']
+      const specsWithExpectedModel = allSpecs.filter(currentSpec => currentSpec.spec.definitions?.[expectedModel])
 
-      for (const currentSpec of allSpecs) {
-        // HeritageBaseModel is a herritage interface for HeritageTestModel2, so it should not be found.
-        // If HeritageBaseModel is ever added to the test model itself, this test may fail even if the it is still working.
-        // In case of failure, check to see if HeritageBaseModel is being used not as a heritage type.
-
-        const notExpectedModels = ['HeritageBaseModel']
-
-        if (currentSpec.spec.definitions && currentSpec.spec.definitions[expectedModel]) {
-          for (const modelName of notExpectedModels) {
-            modelFound = true
-            ValidateOmitted(modelName, currentSpec)
-          }
-        }
-      }
-
-      if (!modelFound) {
-        throw new Error(`${expectedModel} should not have been automatically generated in at least one model.  False positive averted.`)
-      }
+      expect(specsWithExpectedModel, `${expectedModel} should have been automatically generated in at least one model.`).to.not.be.empty
+      specsWithExpectedModel.forEach(currentSpec => {
+        notExpectedModels.forEach(modelName => {
+          validateOmitted(modelName, currentSpec)
+        })
+      })
     })
 
     it('should generate a definition for referenced models', () => {
@@ -135,7 +122,7 @@ describe('Definition generation', () => {
           'tsoaTest.TsoaTest.TestModel73',
         ]
         expectedModels.forEach(modelName => {
-          getValidatedDefinition(modelName, currentSpec)
+          expect(getValidatedDefinition(modelName, currentSpec)).to.exist
         })
       })
     })
@@ -3297,11 +3284,8 @@ describe('Definition generation', () => {
         }
 
         Object.keys(assertionsPerProperty).forEach(aPropertyName => {
-          const propertySchema = definition.properties![aPropertyName]
-          if (!propertySchema) {
-            throw new Error(`There was no ${aPropertyName} schema generated for the ${currentSpec.specName}`)
-          }
           it(`should produce a valid schema for the ${aPropertyName} property on ${interfaceName} for the ${currentSpec.specName}`, () => {
+            const propertySchema = expectExistingValue(definition.properties?.[aPropertyName], `There was no ${aPropertyName} schema generated for the ${currentSpec.specName}`)
             assertionsPerProperty[aPropertyName as keyof TestModel](aPropertyName, propertySchema)
           })
         })
@@ -3322,11 +3306,9 @@ describe('Definition generation', () => {
 
         it('should generate single first example from jsdoc', () => {
           const definition = getValidatedDefinition('TestModel', currentSpec)
-          if (!definition.example) {
-            throw new Error('No definition example.')
-          }
+          const example = expectExistingValue(definition.example, 'No definition example.')
 
-          expect(definition.example).to.deep.equal({
+          expect(example).to.deep.equal({
             boolArray: [true, false],
             boolValue: true,
             dateValue: '2018-06-25T15:45:00Z',
@@ -3353,11 +3335,9 @@ describe('Definition generation', () => {
       describe(`for spec ${currentSpec.specName}`, () => {
         it('should generate a default value from jsdoc', () => {
           const definition = getValidatedDefinition('TestModel', currentSpec)
-          if (!definition.properties) {
-            throw new Error('No definition properties.')
-          }
+          const properties = expectExistingValue(definition.properties, 'No definition properties.')
 
-          expect(definition.properties.boolValue.default).to.equal(true)
+          expect(properties.boolValue.default).to.equal(true)
         })
       })
     })
@@ -3366,117 +3346,90 @@ describe('Definition generation', () => {
   describe('Class-based generation', () => {
     allSpecs.forEach(currentSpec => {
       const modelName = 'TestClassModel'
-      const definition = getValidatedDefinition(modelName, currentSpec)
-      if (!definition.properties) {
-        throw new Error('Definition has no properties.')
-      }
-
-      const properties = definition.properties
+      const getDefinition = () => getValidatedDefinition(modelName, currentSpec)
+      const getProperties = () => expectExistingValue(getDefinition().properties, 'Definition has no properties.')
+      const getProperty = (propertyName: string) => expectExistingValue(getProperties()[propertyName], `Property '${propertyName}' was expected to exist.`)
 
       it('should generate a definition for referenced model', () => {
-        getValidatedDefinition(modelName, currentSpec)
+        expect(getDefinition()).to.equal(getValidatedDefinition(modelName, currentSpec))
       })
 
       it('should generate a required property from a required property', () => {
         const propertyName = 'publicStringProperty'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
 
-        expect(definition.required).to.contain(propertyName)
+        expect(getDefinition().required).to.contain(propertyName)
       })
 
       it('should generate an optional property from an optional property', () => {
         const propertyName = 'optionalPublicStringProperty'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
+
+        expect(getDefinition().required).to.not.contain(propertyName)
       })
 
       it('should generate a required property from a required property with no access modifier', () => {
         const propertyName = 'stringProperty'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
 
-        expect(definition.required).to.contain(propertyName)
+        expect(getDefinition().required).to.contain(propertyName)
       })
 
       it('should generate a required property from a required constructor var', () => {
         const propertyName = 'publicConstructorVar'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
 
-        expect(definition.required).to.contain(propertyName)
+        expect(getDefinition().required).to.contain(propertyName)
       })
 
       it('should generate an optional property from an optional constructor var', () => {
         const propertyName = 'optionalPublicConstructorVar'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
 
-        expect(definition.required).to.not.contain(propertyName)
+        expect(getDefinition().required).to.not.contain(propertyName)
       })
 
       it('should not generate a property for a non-public property', () => {
         const propertyName = 'protectedStringProperty'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(getProperties()[propertyName]).to.be.undefined
       })
 
       it('should not generate a property for a static property', () => {
         const propertyName = 'staticStringProperty'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(getProperties()[propertyName]).to.be.undefined
       })
 
       it('should not generate a property for a non-public constructor var', () => {
         const propertyName = 'protectedConstructorVar'
-        if (properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was not expected to exist.`)
-        }
+        expect(getProperties()[propertyName]).to.be.undefined
       })
 
       it('should generate a property from a readonly constructor argument', () => {
         const propertyName = 'readonlyConstructorArgument'
-        if (!properties[propertyName]) {
-          throw new Error(`Property '${propertyName}' was expected to exist.`)
-        }
+        getProperty(propertyName)
 
-        expect(definition.required).to.contain(propertyName)
+        expect(getDefinition().required).to.contain(propertyName)
       })
 
       it('should generate properties from a base class', () => {
-        const property = properties.id
+        const property = getProperties().id
         expect(property).to.exist
       })
 
       it('should generate a definition description from a model jsdoc comment', () => {
-        expect(definition.description).to.equal('This is a description of TestClassModel')
+        expect(getDefinition().description).to.equal('This is a description of TestClassModel')
       })
 
       it('should generate a property format from a property jsdoc comment', () => {
         const propertyName = 'emailPattern'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property.format).to.equal('email')
       })
 
       it('should generate a property description from a property jsdoc comment', () => {
         const propertyName = 'publicStringProperty'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property).to.exist
         expect(property.description).to.equal('This is a description of a public string property')
@@ -3484,11 +3437,7 @@ describe('Definition generation', () => {
 
       it('should generate a property description from a constructor var jsdoc comment', () => {
         const propertyName = 'publicConstructorVar'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property).to.exist
         expect(property.description).to.equal('This is a description for publicConstructorVar')
@@ -3496,11 +3445,7 @@ describe('Definition generation', () => {
 
       it('should generate a property minLength', () => {
         const propertyName = 'publicStringProperty'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property).to.exist
         expect(property.minLength).to.equal(3)
@@ -3508,11 +3453,7 @@ describe('Definition generation', () => {
 
       it('should generate a property maxLength', () => {
         const propertyName = 'publicStringProperty'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property).to.exist
         expect(property.maxLength).to.equal(20)
@@ -3520,11 +3461,7 @@ describe('Definition generation', () => {
 
       it('should generate a property pattern', () => {
         const propertyName = 'publicStringProperty'
-
-        const property = properties[propertyName]
-        if (!property) {
-          throw new Error(`There was no '${propertyName}' property.`)
-        }
+        const property = getProperty(propertyName)
 
         expect(property).to.exist
         expect(property.pattern).to.equal('^[a-zA-Z]+$')
@@ -3546,9 +3483,7 @@ describe('Definition generation', () => {
         it('should not generate a property for a non-public constructor var', () => {
           const propertyNames = ['defaultConstructorArgument', 'deprecatedNonPublicConstructorVar']
           propertyNames.forEach(propertyName => {
-            if (properties[propertyName]) {
-              throw new Error(`Property '${propertyName}' was not expected to exist.`)
-            }
+            expect(properties[propertyName]).to.be.undefined
           })
         })
 

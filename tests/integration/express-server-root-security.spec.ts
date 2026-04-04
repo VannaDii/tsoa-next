@@ -8,10 +8,6 @@ const basePath = '/v1'
 
 describe('Express Server with api_key Root Security', () => {
   describe('Controller with undefined security', () => {
-    const emptyHandler = (_err: unknown, _res: unknown) => {
-      // This is an empty handler
-    }
-
     it('returns a model if the correct API key is given', () => {
       return verifyGetRequest(app, basePath + '/Current?access_token=abc123456', (_err, res) => {
         const model = res.body as TestModel
@@ -20,15 +16,14 @@ describe('Express Server with api_key Root Security', () => {
     })
 
     it('returns 401 for an invalid key', () => {
-      return verifyGetRequest(app, basePath + '/Current?access_token=invalid', emptyHandler, 401)
+      return verifyGetRequest(app, basePath + '/Current?access_token=invalid', undefined, 401).then(response => {
+        expect(response.status).to.equal(401)
+        expect(JSON.parse(response.text).message).to.equal('api_key')
+      })
     })
   })
 
   describe('Controller with @NoSecurity', () => {
-    const emptyHandler = (_err: unknown, _res: unknown) => {
-      // This is an empty handler
-    }
-
     it('returns a model without auth for a request with undefined method security', () => {
       return verifyGetRequest(app, basePath + '/NoSecurity/UndefinedSecurity', (_err, res) => {
         const model = res.body as UserResponseModel
@@ -38,7 +33,10 @@ describe('Express Server with api_key Root Security', () => {
 
     describe('method with @Security(api_key)', () => {
       it('returns 401 for an invalid key', () => {
-        return verifyGetRequest(app, basePath + '/NoSecurity?access_token=invalid', emptyHandler, 401)
+        return verifyGetRequest(app, basePath + '/NoSecurity?access_token=invalid', undefined, 401).then(response => {
+          expect(response.status).to.equal(401)
+          expect(JSON.parse(response.text).message).to.equal('api_key')
+        })
       })
 
       it('returns a model with a valid key', () => {

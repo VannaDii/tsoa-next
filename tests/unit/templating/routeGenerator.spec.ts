@@ -1,6 +1,10 @@
 import { expect } from 'chai'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, relative } from 'node:path'
 import 'mocha'
 import { Tsoa } from '@tsoa-next/runtime'
+import { generateRoutes } from '@tsoa-next/cli/module/generate-routes'
 import { DefaultRouteGenerator } from '@tsoa-next/cli/routeGeneration/defaultRouteGenerator'
 
 describe('RouteGenerator', () => {
@@ -234,6 +238,32 @@ describe('RouteGenerator', () => {
       const models = generator.buildContent('{{#each controllers}}{{modulePath}}{{/each}}')
 
       expect(models).to.equal('./controller.mts')
+    })
+  })
+
+  describe('.generateRoutes', () => {
+    it('loads a custom route generator from a bare file path', async () => {
+      const routesDir = mkdtempSync(join(tmpdir(), 'tsoa-custom-route-generator-'))
+      const testsRoot = join(__dirname, '..', '..')
+      const routeGeneratorPath = relative(process.cwd(), join(testsRoot, 'fixtures', 'custom', 'custom-route-generator', 'serverlessRouteGenerator')).replace(/\.ts$/, '')
+
+      try {
+        await generateRoutes({
+          noImplicitAdditionalProperties: 'silently-remove-extras',
+          bodyCoercion: true,
+          basePath: '/v1',
+          entryFile: relative(process.cwd(), join(testsRoot, 'fixtures', 'custom', 'server.ts')),
+          routesDir,
+          routeGenerator: routeGeneratorPath,
+          modelsTemplate: relative(process.cwd(), join(testsRoot, 'fixtures', 'custom', 'custom-route-generator', 'templates', 'models.hbs')),
+          handlerTemplate: relative(process.cwd(), join(testsRoot, 'fixtures', 'custom', 'custom-route-generator', 'templates', 'handler.hbs')),
+          stackTemplate: relative(process.cwd(), join(testsRoot, 'fixtures', 'custom', 'custom-route-generator', 'templates', 'api-stack.hbs')),
+        })
+
+        expect(existsSync(join(routesDir, 'stack.ts'))).to.equal(true)
+      } finally {
+        rmSync(routesDir, { force: true, recursive: true })
+      }
     })
   })
 })

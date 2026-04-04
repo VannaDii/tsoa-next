@@ -1,14 +1,12 @@
+import { createNoopClassDecorator, createNoopHiddenDecorator } from './noop'
+
 export function Route(_name?: string): ClassDecorator {
-  return () => {
-    return
-  }
+  return createNoopClassDecorator('route')
 }
 
 /**
  * can be used to entirely hide an method from documentation
  */
 export function Hidden(): ClassDecorator & MethodDecorator & ParameterDecorator {
-  return () => {
-    return
-  }
+  return createNoopHiddenDecorator('hidden')
 }

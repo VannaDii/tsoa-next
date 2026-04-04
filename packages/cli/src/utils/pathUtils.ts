@@ -24,12 +24,12 @@ export function convertColonPathParams(path: string) {
     return path
   }
 
-  const normalised = path.replace(/:([^/]+)/g, '{$1}')
+  const normalised = path.replaceAll(/:([^/]+)/g, '{$1}')
   return normalised
 }
 
 export function convertBracesPathParams(path: string) {
-  return path.replace(/{(\w*)}/g, ':$1')
+  return path.replaceAll(/{(\w*)}/g, ':$1')
 }
 
 function trimPathDelimiters(path: string) {

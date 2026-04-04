@@ -48,34 +48,55 @@ type ValidateArrayOptions = {
 
 type ValidateArrayTupleArgs = [string, unknown, FieldErrors, boolean, TsoaRoute.PropertySchema?, ArrayValidator?, string?, ParameterValidationMetadata?]
 
-// for backwards compatibility with custom templates
-export function ValidateParam<TValue>(
-  property: TsoaRoute.PropertySchema,
-  value: TValue,
-  generatedModels: TsoaRoute.Models,
-  name: string | undefined,
-  fieldErrors: FieldErrors,
-  isBodyParam: boolean,
-  parent: string | undefined,
-  config: AdditionalProps,
-  metadata?: ParameterValidationMetadata,
-): TValue
-export function ValidateParam(
-  property: TsoaRoute.PropertySchema,
-  value: unknown,
-  generatedModels: TsoaRoute.Models,
-  name = '',
-  fieldErrors: FieldErrors,
-  isBodyParam: boolean,
-  parent = '',
-  config: AdditionalProps,
-  metadata?: ParameterValidationMetadata,
-): unknown {
-  return new ValidationService(generatedModels, config).ValidateParam(property, value, name, fieldErrors, isBodyParam, parent, metadata)
+type NumericBoundValidators = {
+  minimum?: { value: number; errorMsg?: string }
+  maximum?: { value: number; errorMsg?: string }
+  exclusiveMinimum?: { value: number; errorMsg?: string }
+  exclusiveMaximum?: { value: number; errorMsg?: string }
+}
+
+type DateRangeValidators = {
+  minDate?: { value: string; errorMsg?: string }
+  maxDate?: { value: string; errorMsg?: string }
+}
+
+const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
+
+type ValidateParamOptions<TValue> = {
+  property: TsoaRoute.PropertySchema
+  value: TValue
+  generatedModels: TsoaRoute.Models
+  name?: string
+  fieldErrors: FieldErrors
+  isBodyParam: boolean
+  parent?: string
+  config: AdditionalProps
+  metadata?: ParameterValidationMetadata
+}
+
+type ValidateParamTupleArgs<TValue> = [TsoaRoute.PropertySchema, TValue, TsoaRoute.Models, string | undefined, FieldErrors, boolean, string | undefined, AdditionalProps, ParameterValidationMetadata?]
+
+const normalizeValidateParamArgs = <TValue>(args: [ValidateParamOptions<TValue>] | ValidateParamTupleArgs<TValue>): ValidateParamOptions<TValue> => {
+  if (args.length === 1) {
+    return args[0]
+  }
+
+  const [property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata] = args
+  return { property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata }
+}
+
+export function ValidateParam<TValue>(options: ValidateParamOptions<TValue>): TValue
+/**
+ * @deprecated Use the object overload instead.
+ */
+export function ValidateParam<TValue>(...args: ValidateParamTupleArgs<TValue>): TValue // NOSONAR: deprecated overload preserves the historical custom-template signature.
+export function ValidateParam<TValue>(...args: [ValidateParamOptions<TValue>] | ValidateParamTupleArgs<TValue>): TValue {
+  const { property, value, generatedModels, name, fieldErrors, isBodyParam, parent, config, metadata } = normalizeValidateParamArgs(args)
+  return new ValidationService(generatedModels, config).ValidateParam(property, value, name ?? '', fieldErrors, isBodyParam, parent ?? '', metadata)
 }
 
 export class ValidationService {
-  private validationStack: Set<string> = new Set()
+  private readonly validationStack: Set<string> = new Set()
 
   constructor(
     private readonly models: TsoaRoute.Models,
@@ -175,6 +196,127 @@ export class ValidationService {
     })
 
     return message
+  }
+
+  private createFieldError(message: string, value: unknown): FieldErrors[string] {
+    return { message, value }
+  }
+
+  private getNumericTypeErrorMessage(
+    validators: Pick<IntegerValidator, 'isInt' | 'isLong'> | Pick<FloatValidator, 'isFloat' | 'isDouble'> | undefined,
+    defaultMessage: string,
+    primaryValidator: 'isInt' | 'isFloat',
+    _secondaryValidator: 'isLong' | 'isDouble',
+  ): string {
+    if (primaryValidator === 'isInt') {
+      const integerValidators = validators as Pick<IntegerValidator, 'isInt' | 'isLong'> | undefined
+      return integerValidators?.isInt?.errorMsg ?? integerValidators?.isLong?.errorMsg ?? defaultMessage
+    }
+
+    const floatValidators = validators as Pick<FloatValidator, 'isFloat' | 'isDouble'> | undefined
+    return floatValidators?.isFloat?.errorMsg ?? floatValidators?.isDouble?.errorMsg ?? defaultMessage
+  }
+
+  private getNumberBoundaryError(validators: NumericBoundValidators | undefined, numberValue: number, rawValue: unknown): FieldErrors[string] | undefined {
+    const minimum = validators?.minimum
+    if (minimum?.value !== undefined && minimum.value > numberValue) {
+      return this.createFieldError(minimum.errorMsg || `min ${minimum.value}`, rawValue)
+    }
+
+    const exclusiveMinimum = validators?.exclusiveMinimum
+    if (exclusiveMinimum?.value !== undefined && exclusiveMinimum.value >= numberValue) {
+      return this.createFieldError(exclusiveMinimum.errorMsg || `exclusiveMin ${exclusiveMinimum.value}`, rawValue)
+    }
+
+    const maximum = validators?.maximum
+    if (maximum?.value !== undefined && maximum.value < numberValue) {
+      return this.createFieldError(maximum.errorMsg || `max ${maximum.value}`, rawValue)
+    }
+
+    const exclusiveMaximum = validators?.exclusiveMaximum
+    if (exclusiveMaximum?.value !== undefined && exclusiveMaximum.value <= numberValue) {
+      return this.createFieldError(exclusiveMaximum.errorMsg || `exclusiveMax ${exclusiveMaximum.value}`, rawValue)
+    }
+
+    return undefined
+  }
+
+  private getDateTypeErrorMessage(validators: Pick<DateValidator, 'isDate'> | Pick<DateTimeValidator, 'isDateTime'> | undefined, key: 'isDate' | 'isDateTime', defaultMessage: string): string {
+    if (key === 'isDate') {
+      const dateValidators = validators as Pick<DateValidator, 'isDate'> | undefined
+      return dateValidators?.isDate?.errorMsg ?? defaultMessage
+    }
+
+    const dateTimeValidators = validators as Pick<DateTimeValidator, 'isDateTime'> | undefined
+    return dateTimeValidators?.isDateTime?.errorMsg ?? defaultMessage
+  }
+
+  private getDateBoundaryError(validators: DateRangeValidators | undefined, dateValue: Date, rawValue: unknown): FieldErrors[string] | undefined {
+    const minDateValue = validators?.minDate?.value
+    if (minDateValue) {
+      const minDate = new Date(minDateValue)
+      if (minDate > dateValue) {
+        return this.createFieldError(validators?.minDate?.errorMsg || `minDate '${minDateValue}'`, rawValue)
+      }
+    }
+
+    const maxDateValue = validators?.maxDate?.value
+    if (maxDateValue) {
+      const maxDate = new Date(maxDateValue)
+      if (maxDate < dateValue) {
+        return this.createFieldError(validators?.maxDate?.errorMsg || `maxDate '${maxDateValue}'`, rawValue)
+      }
+    }
+
+    return undefined
+  }
+
+  private getStringValidationError(validators: StringValidator | undefined, stringValue: string, rawValue: unknown): FieldErrors[string] | undefined {
+    const minLength = validators?.minLength
+    if (minLength?.value !== undefined && minLength.value > stringValue.length) {
+      return this.createFieldError(minLength.errorMsg || `minLength ${minLength.value}`, rawValue)
+    }
+
+    const maxLength = validators?.maxLength
+    if (maxLength?.value !== undefined && maxLength.value < stringValue.length) {
+      return this.createFieldError(maxLength.errorMsg || `maxLength ${maxLength.value}`, rawValue)
+    }
+
+    const pattern = validators?.pattern?.value
+    if (pattern && !validator.matches(stringValue, pattern)) {
+      return this.createFieldError(validators?.pattern?.errorMsg || `Not match in '${pattern}'`, rawValue)
+    }
+
+    return undefined
+  }
+
+  private coerceBooleanValue(value: unknown, isBodyParam: boolean): boolean | undefined {
+    if (value === true || value === false) {
+      return value
+    }
+
+    if (isBodyParam && this.config.bodyCoercion !== true) {
+      return undefined
+    }
+
+    if (value === undefined || value === null) {
+      return false
+    }
+
+    if (typeof value !== 'string') {
+      return undefined
+    }
+
+    const normalizedValue = value.toLowerCase()
+    if (normalizedValue === 'true') {
+      return true
+    }
+
+    if (normalizedValue === 'false') {
+      return false
+    }
+
+    return undefined
   }
 
   private validateResolvedProperty({
@@ -395,7 +537,7 @@ export class ValidationService {
     })
 
     if (typeof additionalProperties === 'object') {
-      const keys = Object.keys(value).filter(key => typeof nestedProperties[key] === 'undefined')
+      const keys = Object.keys(value).filter(key => nestedProperties[key] === undefined)
       keys.forEach(key => {
         const validatedProp = this.ValidateParam(additionalProperties, value[key], key, fieldErrors, isBodyParam, childPath, metadata)
         // Add value from validator if it's not undefined or if value is required and unfedined is valid type
@@ -424,19 +566,7 @@ export class ValidationService {
 
   public validateInt(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: IntegerValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isInt(String(value))) {
-      let message = `invalid integer number`
-      if (validators) {
-        if (validators.isInt && validators.isInt.errorMsg) {
-          message = validators.isInt.errorMsg
-        }
-        if (validators.isLong && validators.isLong.errorMsg) {
-          message = validators.isLong.errorMsg
-        }
-      }
-      fieldErrors[parent + name] = {
-        message,
-        value,
-      }
+      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, `invalid integer number`, 'isInt', 'isLong'), value)
       return
     }
 
@@ -444,60 +574,18 @@ export class ValidationService {
     if (!validators) {
       return numberValue
     }
-    if (validators.minimum && validators.minimum.value !== undefined) {
-      if (validators.minimum.value > numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.minimum.errorMsg || `min ${validators.minimum.value}`,
-          value,
-        }
-        return
-      }
+    const validationError = this.getNumberBoundaryError(validators, numberValue, value)
+    if (validationError) {
+      fieldErrors[parent + name] = validationError
+      return
     }
-    if (validators.exclusiveMinimum && validators.exclusiveMinimum.value !== undefined) {
-      if (validators.exclusiveMinimum.value >= numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.exclusiveMinimum.errorMsg || `exclusiveMin ${validators.exclusiveMinimum.value}`,
-          value,
-        }
-        return
-      }
-    }
-    if (validators.maximum && validators.maximum.value !== undefined) {
-      if (validators.maximum.value < numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.maximum.errorMsg || `max ${validators.maximum.value}`,
-          value,
-        }
-        return
-      }
-    }
-    if (validators.exclusiveMaximum && validators.exclusiveMaximum.value !== undefined) {
-      if (validators.exclusiveMaximum.value <= numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.exclusiveMaximum.errorMsg || `exclusiveMax ${validators.exclusiveMaximum.value}`,
-          value,
-        }
-        return
-      }
-    }
+
     return numberValue
   }
 
   public validateFloat(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: FloatValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isFloat(String(value))) {
-      let message = 'invalid float number'
-      if (validators) {
-        if (validators.isFloat && validators.isFloat.errorMsg) {
-          message = validators.isFloat.errorMsg
-        }
-        if (validators.isDouble && validators.isDouble.errorMsg) {
-          message = validators.isDouble.errorMsg
-        }
-      }
-      fieldErrors[parent + name] = {
-        message,
-        value,
-      }
+      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, 'invalid float number', 'isFloat', 'isDouble'), value)
       return
     }
 
@@ -505,42 +593,12 @@ export class ValidationService {
     if (!validators) {
       return numberValue
     }
-    if (validators.minimum && validators.minimum.value !== undefined) {
-      if (validators.minimum.value > numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.minimum.errorMsg || `min ${validators.minimum.value}`,
-          value,
-        }
-        return
-      }
+    const validationError = this.getNumberBoundaryError(validators, numberValue, value)
+    if (validationError) {
+      fieldErrors[parent + name] = validationError
+      return
     }
-    if (validators.exclusiveMinimum && validators.exclusiveMinimum.value !== undefined) {
-      if (validators.exclusiveMinimum.value >= numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.exclusiveMinimum.errorMsg || `exclusiveMin ${validators.exclusiveMinimum.value}`,
-          value,
-        }
-        return
-      }
-    }
-    if (validators.maximum && validators.maximum.value !== undefined) {
-      if (validators.maximum.value < numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.maximum.errorMsg || `max ${validators.maximum.value}`,
-          value,
-        }
-        return
-      }
-    }
-    if (validators.exclusiveMaximum && validators.exclusiveMaximum.value !== undefined) {
-      if (validators.exclusiveMaximum.value <= numberValue) {
-        fieldErrors[parent + name] = {
-          message: validators.exclusiveMaximum.errorMsg || `exclusiveMax ${validators.exclusiveMaximum.value}`,
-          value,
-        }
-        return
-      }
-    }
+
     return numberValue
   }
 
@@ -553,7 +611,7 @@ export class ValidationService {
       return
     }
 
-    const enumMatchIndex = members.map(member => String(member)).findIndex(member => validator.equals(member, String(value)))
+    const enumMatchIndex = members.findIndex(member => validator.equals(String(member), String(value)))
 
     if (enumMatchIndex === -1) {
       const membersInQuotes = members.map(member => (typeof member === 'string' ? `'${member}'` : String(member)))
@@ -569,11 +627,7 @@ export class ValidationService {
 
   public validateDate(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateValidator, parent = ''): Date | undefined {
     if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
-      const message = validators && validators.isDate && validators.isDate.errorMsg ? validators.isDate.errorMsg : `invalid ISO 8601 date format, i.e. YYYY-MM-DD`
-      fieldErrors[parent + name] = {
-        message,
-        value,
-      }
+      fieldErrors[parent + name] = this.createFieldError(this.getDateTypeErrorMessage(validators, 'isDate', `invalid ISO 8601 date format, i.e. YYYY-MM-DD`), value)
       return
     }
 
@@ -581,36 +635,18 @@ export class ValidationService {
     if (!validators) {
       return dateValue
     }
-    if (validators.minDate && validators.minDate.value) {
-      const minDate = new Date(validators.minDate.value)
-      if (minDate.getTime() > dateValue.getTime()) {
-        fieldErrors[parent + name] = {
-          message: validators.minDate.errorMsg || `minDate '${validators.minDate.value}'`,
-          value,
-        }
-        return
-      }
+    const validationError = this.getDateBoundaryError(validators, dateValue, value)
+    if (validationError) {
+      fieldErrors[parent + name] = validationError
+      return
     }
-    if (validators.maxDate && validators.maxDate.value) {
-      const maxDate = new Date(validators.maxDate.value)
-      if (maxDate.getTime() < dateValue.getTime()) {
-        fieldErrors[parent + name] = {
-          message: validators.maxDate.errorMsg || `maxDate '${validators.maxDate.value}'`,
-          value,
-        }
-        return
-      }
-    }
+
     return dateValue
   }
 
   public validateDateTime(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: DateTimeValidator, parent = ''): Date | undefined {
     if (!this.hasCorrectJsType(value, 'string', isBodyParam) || !validator.isISO8601(String(value), { strict: true })) {
-      const message = validators && validators.isDateTime && validators.isDateTime.errorMsg ? validators.isDateTime.errorMsg : `invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss`
-      fieldErrors[parent + name] = {
-        message,
-        value,
-      }
+      fieldErrors[parent + name] = this.createFieldError(this.getDateTypeErrorMessage(validators, 'isDateTime', `invalid ISO 8601 datetime format, i.e. YYYY-MM-DDTHH:mm:ss`), value)
       return
     }
 
@@ -618,36 +654,18 @@ export class ValidationService {
     if (!validators) {
       return datetimeValue
     }
-    if (validators.minDate && validators.minDate.value) {
-      const minDate = new Date(validators.minDate.value)
-      if (minDate.getTime() > datetimeValue.getTime()) {
-        fieldErrors[parent + name] = {
-          message: validators.minDate.errorMsg || `minDate '${validators.minDate.value}'`,
-          value,
-        }
-        return
-      }
+    const validationError = this.getDateBoundaryError(validators, datetimeValue, value)
+    if (validationError) {
+      fieldErrors[parent + name] = validationError
+      return
     }
-    if (validators.maxDate && validators.maxDate.value) {
-      const maxDate = new Date(validators.maxDate.value)
-      if (maxDate.getTime() < datetimeValue.getTime()) {
-        fieldErrors[parent + name] = {
-          message: validators.maxDate.errorMsg || `maxDate '${validators.maxDate.value}'`,
-          value,
-        }
-        return
-      }
-    }
+
     return datetimeValue
   }
 
   public validateString(name: string, value: unknown, fieldErrors: FieldErrors, validators?: StringValidator, parent = ''): string | undefined {
     if (typeof value !== 'string') {
-      const message = validators && validators.isString && validators.isString.errorMsg ? validators.isString.errorMsg : `invalid string value`
-      fieldErrors[parent + name] = {
-        message,
-        value,
-      }
+      fieldErrors[parent + name] = this.createFieldError(validators?.isString?.errorMsg ?? `invalid string value`, value)
       return
     }
 
@@ -655,59 +673,23 @@ export class ValidationService {
     if (!validators) {
       return stringValue
     }
-    if (validators.minLength && validators.minLength.value !== undefined) {
-      if (validators.minLength.value > stringValue.length) {
-        fieldErrors[parent + name] = {
-          message: validators.minLength.errorMsg || `minLength ${validators.minLength.value}`,
-          value,
-        }
-        return
-      }
+    const validationError = this.getStringValidationError(validators, stringValue, value)
+    if (validationError) {
+      fieldErrors[parent + name] = validationError
+      return
     }
-    if (validators.maxLength && validators.maxLength.value !== undefined) {
-      if (validators.maxLength.value < stringValue.length) {
-        fieldErrors[parent + name] = {
-          message: validators.maxLength.errorMsg || `maxLength ${validators.maxLength.value}`,
-          value,
-        }
-        return
-      }
-    }
-    if (validators.pattern && validators.pattern.value) {
-      if (!validator.matches(String(stringValue), validators.pattern.value)) {
-        fieldErrors[parent + name] = {
-          message: validators.pattern.errorMsg || `Not match in '${validators.pattern.value}'`,
-          value,
-        }
-        return
-      }
-    }
+
     return stringValue
   }
 
   public validateBool(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: BooleanValidator, parent = ''): boolean | undefined {
-    if (value === true || value === false) {
-      return value
+    const coercedValue = this.coerceBooleanValue(value, isBodyParam)
+    if (coercedValue !== undefined) {
+      return coercedValue
     }
 
-    if (!isBodyParam || this.config.bodyCoercion === true) {
-      if (value === undefined || value === null) {
-        return false
-      }
-      if (String(value).toLowerCase() === 'true') {
-        return true
-      }
-      if (String(value).toLowerCase() === 'false') {
-        return false
-      }
-    }
-
-    const message = validators && validators.isBoolean && validators.isBoolean.errorMsg ? validators.isBoolean.errorMsg : `invalid boolean value`
-    fieldErrors[parent + name] = {
-      message,
-      value,
-    }
-    return
+    fieldErrors[parent + name] = this.createFieldError(validators?.isBoolean?.errorMsg ?? `invalid boolean value`, value)
+    return undefined
   }
 
   public validateUndefined(name: string, value: unknown, fieldErrors: FieldErrors, parent = ''): undefined {
@@ -720,7 +702,6 @@ export class ValidationService {
       message,
       value,
     }
-    return
   }
 
   public validateArray(options: ValidateArrayOptions): unknown[] | undefined
@@ -841,7 +822,7 @@ export class ValidationService {
       message: 'invalid buffer value',
       value,
     }
-    return
+    return undefined
   }
 
   public validateUnion<TValue>(
@@ -869,7 +850,7 @@ export class ValidationService {
 
       // Clean value if it's not undefined or use undefined directly if it's undefined.
       // Value can be undefined if undefined is allowed datatype of the union
-      const validateableValue = value !== undefined ? this.deepClone(value) : value
+      const validateableValue = value === undefined ? value : this.deepClone(value)
       const cleanValue = this.ValidateParam({ ...subSchema, validators: { ...property.validators, ...subSchema.validators } }, validateableValue, name, subFieldError, isBodyParam, parent, metadata)
       subFieldErrors.push(subFieldError)
 
@@ -879,7 +860,7 @@ export class ValidationService {
     }
 
     this.addSummarizedError(fieldErrors, parent + name, 'Could not match the union against any of the items. Issues: ', subFieldErrors, value)
-    return
+    return undefined
   }
 
   public validateIntersection<TValue>(
@@ -958,24 +939,24 @@ export class ValidationService {
     if (this.config.noImplicitAdditionalProperties === 'silently-remove-extras') {
       if (schemasWithRequiredProps.length > 0) {
         return cleanValues
-      } else {
-        fieldErrors[parent + name] = {
-          message: `Could not match intersection against any of the possible combinations: ${JSON.stringify(schemas.map(s => Object.keys(s.properties)))}`,
-          value,
-        }
-        return
       }
-    }
 
-    if (this.isRecord(value) && schemasWithRequiredProps.length > 0 && schemasWithRequiredProps.some(schema => this.getExcessPropertiesFor(schema, Object.keys(value)).length === 0)) {
-      return cleanValues
-    } else {
       fieldErrors[parent + name] = {
         message: `Could not match intersection against any of the possible combinations: ${JSON.stringify(schemas.map(s => Object.keys(s.properties)))}`,
         value,
       }
       return
     }
+
+    if (this.isRecord(value) && schemasWithRequiredProps.some(schema => this.getExcessPropertiesFor(schema, Object.keys(value)).length === 0)) {
+      return cleanValues
+    }
+
+    fieldErrors[parent + name] = {
+      message: `Could not match intersection against any of the possible combinations: ${JSON.stringify(schemas.map(s => Object.keys(s.properties)))}`,
+      value,
+    }
+    return undefined
   }
 
   private toModelLike(schema: TsoaRoute.PropertySchema): TsoaRoute.RefObjectModelSchema[] {
@@ -996,13 +977,14 @@ export class ValidationService {
       const modelss: TsoaRoute.RefObjectModelSchema[][] = schema.subSchemas.map(subSchema => this.toModelLike(subSchema))
 
       return this.selfIntersectionCombinations(modelss)
-    } else if (schema.subSchemas && schema.dataType === 'union') {
-      const modelss: TsoaRoute.RefObjectModelSchema[][] = schema.subSchemas.map(subSchema => this.toModelLike(subSchema))
-      return modelss.reduce((acc, models) => [...acc, ...models], [])
-    } else {
-      // There are no properties to check for excess here.
-      return [{ dataType: 'refObject', properties: {}, additionalProperties: false }]
     }
+
+    if (schema.subSchemas && schema.dataType === 'union') {
+      return schema.subSchemas.flatMap(subSchema => this.toModelLike(subSchema))
+    }
+
+    // There are no properties to check for excess here.
+    return [{ dataType: 'refObject', properties: {}, additionalProperties: false }]
   }
 
   /**
@@ -1045,8 +1027,8 @@ export class ValidationService {
         return
       }
 
-      for (let i = 0; i < arrays[index].length; i++) {
-        current.push(arrays[index][i])
+      for (const item of arrays[index]) {
+        current.push(item)
         combine(current, index + 1)
         current.pop()
       }
@@ -1209,7 +1191,7 @@ export class ValidationService {
 
     // Handle built-in object types
     if (obj instanceof Date) {
-      return new Date(obj.getTime()) as T
+      return new Date(obj) as T
     }
 
     if (obj instanceof RegExp) {
@@ -1223,14 +1205,14 @@ export class ValidationService {
       return clonedArray as T
     }
 
-    if (Buffer && obj instanceof Buffer) {
+    if (obj instanceof Buffer) {
       return Buffer.from(obj) as T
     }
 
     // Handle plain objects
     const cloneObj: Record<string, unknown> = {}
     for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      if (objectHasOwn(obj, key)) {
         cloneObj[key] = this.deepClone((obj as Record<string, unknown>)[key])
       }
     }
@@ -1306,9 +1288,9 @@ export class ValidationService {
         }
       }
       return result
-    } else {
-      return `[${summary.join(',')}]`
     }
+
+    return `[${summary.join(',')}]`
   }
 }
 

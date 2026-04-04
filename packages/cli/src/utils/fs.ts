@@ -1,5 +1,5 @@
-import * as fs from 'fs'
-import { promisify } from 'util'
+import * as fs from 'node:fs'
+import { promisify } from 'node:util'
 
 export async function fsExists(path: fs.PathLike): Promise<boolean> {
   try {
