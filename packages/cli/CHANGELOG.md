@@ -1,5 +1,20 @@
 # @tsoa-next/cli
 
+## 8.0.2
+
+### Patch Changes
+
+- a051324: Remediate the remaining metadata resolver quality issues without changing the public API surface.
+
+  This patch keeps the existing CLI contracts intact while reducing internal complexity, tightening default parsing behavior, and adding focused tests that lock in the non-breaking behavior.
+
+- 63e57e3: Remediate the Sonar cleanup pass across the CLI and runtime without changing the public API surface.
+
+  This patch keeps the existing exported contracts intact while reducing internal complexity, preserving legacy compatibility paths, and tightening integration and unit assertions around the affected behavior.
+
+- Updated dependencies [63e57e3]
+  - @tsoa-next/runtime@8.0.2
+
 ## 8.0.1
 
 ### Patch Changes
