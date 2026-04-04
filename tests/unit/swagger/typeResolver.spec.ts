@@ -415,6 +415,19 @@ describe('TypeResolver', () => {
       expect((resolverWithInheritedFailure as any).context).to.deep.equal({ preserved: true })
     })
 
+    it('ignores inherited mixin expressions that are not entity names', () => {
+      const sourceFile = ts.createSourceFile('inheritance.ts', 'declare function createBase(): new () => {}; class Child extends createBase() {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
+      const childClass = findFirstNode(sourceFile, (node): node is ts.ClassDeclaration => ts.isClassDeclaration(node) && node.name?.text === 'Child')
+      const resolverWithMixinHeritage = new TypeResolver(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword), {} as any)
+
+      ;(resolverWithMixinHeritage as any).context = { preserved: true }
+
+      const inheritedProperties = (resolverWithMixinHeritage as any).getModelInheritedProperties(childClass)
+
+      expect(inheritedProperties).to.deep.equal([])
+      expect((resolverWithMixinHeritage as any).context).to.deep.equal({ preserved: true })
+    })
+
     it('rethrows unexpected inherited reference failures', () => {
       const sourceFile = ts.createSourceFile('inheritance.ts', 'class BrokenBase {} class Child extends BrokenBase {}', ts.ScriptTarget.ES2021, true, ts.ScriptKind.TS)
       const childClass = findFirstNode(sourceFile, (node): node is ts.ClassDeclaration => ts.isClassDeclaration(node) && node.name?.text === 'Child')

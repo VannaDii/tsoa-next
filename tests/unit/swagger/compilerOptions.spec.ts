@@ -189,7 +189,7 @@ describe('CompilerOptions', () => {
   })
 
   it('throws for an explicitly configured missing tsconfig', () => {
-    const expectedPath = normalizePathForAssertion(join(testDir, 'missing.tsconfig.json'))
+    const expectedPath = join(testDir, 'missing.tsconfig.json')
 
     expect(() =>
       validateCompilerOptions(
@@ -204,7 +204,7 @@ describe('CompilerOptions', () => {
   it('throws for invalid tsconfig json', async () => {
     await writeFile(join(testDir, 'tsconfig.json'), '{ "compilerOptions": ', 'utf8')
 
-    const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
+    const expectedPath = join(testDir, 'tsconfig.json')
 
     expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to read tsconfig at '${expectedPath}'`)
   })
@@ -218,7 +218,7 @@ describe('CompilerOptions', () => {
       'utf8',
     )
 
-    const expectedPath = normalizePathForAssertion(join(testDir, 'tsconfig.json'))
+    const expectedPath = join(testDir, 'tsconfig.json')
 
     expect(() => validateCompilerOptions(testConfig(), testDir)).to.throw(`Failed to resolve tsconfig at '${expectedPath}'`)
   })

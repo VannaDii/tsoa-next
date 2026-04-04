@@ -1440,11 +1440,15 @@ export class TypeResolver {
     return undefined
   }
 
-  private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.EntityName): Context {
+  private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.Node): Context {
     let newContext: Context = {}
 
     // Inline object types don't contribute generic declarations, so they map to an empty context.
     if (!this.current.typeChecker) {
+      return newContext
+    }
+
+    if (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity)) {
       return newContext
     }
 
@@ -1513,8 +1517,12 @@ export class TypeResolver {
   }
 
   private getInheritedReferenceType(typeNode: ts.ExpressionWithTypeArguments): Tsoa.ReferenceType | undefined {
+    if (!ts.isIdentifier(typeNode.expression) && !ts.isQualifiedName(typeNode.expression)) {
+      return undefined
+    }
+
     const resetContext = this.context
-    this.context = this.typeArgumentsToContext(typeNode, typeNode.expression as ts.EntityName)
+    this.context = this.typeArgumentsToContext(typeNode, typeNode.expression)
 
     try {
       return this.getReferenceType(typeNode, false)

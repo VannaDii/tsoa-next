@@ -5,6 +5,7 @@ import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
 import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   routesConfig: Config,
@@ -46,13 +47,13 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
         const module = (await import(routeGenerator)) as RouteGeneratorModule<Config>
         return new module.default(metadata, routesConfig)
       } catch (moduleImportError) {
-        // try to find a relative import path
-        const relativePath = path.relative(__dirname, routeGenerator)
         try {
-          const module = (await import(relativePath)) as RouteGeneratorModule<Config>
+          const resolvedRouteGeneratorPath = require.resolve(path.resolve(routeGenerator))
+          const fileSpecifier = pathToFileURL(resolvedRouteGeneratorPath).href
+          const module = (await import(fileSpecifier)) as RouteGeneratorModule<Config>
           return new module.default(metadata, routesConfig)
-        } catch (relativeImportError) {
-          throw new AggregateError([moduleImportError, relativeImportError], `Failed to load route generator '${routeGenerator}' as a module import or relative path.`)
+        } catch (fileImportError) {
+          throw new AggregateError([moduleImportError, fileImportError], `Failed to load route generator '${routeGenerator}' as a module import or file path.`)
         }
       }
     }
