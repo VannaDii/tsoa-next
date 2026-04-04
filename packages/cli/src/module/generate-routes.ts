@@ -5,7 +5,6 @@ import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
 import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   routesConfig: Config,
@@ -36,6 +35,11 @@ export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   return metadata
 }
 
+function normalizeRelativeImportPath(targetPath: string): string {
+  const relativePath = path.relative(__dirname, path.resolve(targetPath)).replaceAll(path.sep, '/')
+  return relativePath.startsWith('.') ? relativePath : `./${relativePath}`
+}
+
 async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: Tsoa.Metadata, routesConfig: Config) {
   // default route generator for express/koa/hapi
   // custom route generator
@@ -48,12 +52,11 @@ async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: 
         return new module.default(metadata, routesConfig)
       } catch (moduleImportError) {
         try {
-          const resolvedRouteGeneratorPath = require.resolve(path.resolve(routeGenerator))
-          const fileSpecifier = pathToFileURL(resolvedRouteGeneratorPath).href
-          const module = (await import(fileSpecifier)) as RouteGeneratorModule<Config>
+          const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
+          const module = (await import(relativeImportPath)) as RouteGeneratorModule<Config>
           return new module.default(metadata, routesConfig)
-        } catch (fileImportError) {
-          throw new AggregateError([moduleImportError, fileImportError], `Failed to load route generator '${routeGenerator}' as a module import or file path.`)
+        } catch (relativeImportError) {
+          throw new AggregateError([moduleImportError, relativeImportError], `Failed to load route generator '${routeGenerator}' as a module import or relative path.`)
         }
       }
     }
