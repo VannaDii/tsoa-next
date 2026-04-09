@@ -34,6 +34,11 @@ type DeclarationWithTypeParameters = ts.Declaration & {
 }
 type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 type DefaultStringDelimiter = '"' | "'" | '`'
+type ResolvedContextualTypeArgument = {
+  type: ts.TypeNode
+  name?: string
+  resolvedType?: ts.Type
+}
 
 interface DefaultFormattingState {
   formatted: string
@@ -1052,33 +1057,7 @@ export class TypeResolver {
 
     visited.add(symbol)
 
-    let comesFromModule = false
-    const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
-    for (const declaration of declarations) {
-      let current: ts.Node | undefined = declaration.parent
-      while (current && !ts.isImportDeclaration(current)) {
-        current = current.parent
-      }
-
-      if (current && ts.isImportDeclaration(current) && ts.isStringLiteral(current.moduleSpecifier) && current.moduleSpecifier.text === moduleName) {
-        comesFromModule = true
-        break
-      }
-
-      const fileName = declaration.getSourceFile().fileName.replaceAll('\\', '/')
-      if (fileName.includes(`/node_modules/${moduleName}/`)) {
-        comesFromModule = true
-        break
-      }
-    }
-
-    if (!comesFromModule && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-      const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
-      if (aliasedSymbol !== symbol) {
-        comesFromModule = this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
-      }
-    }
-
+    const comesFromModule = this.symbolDeclarationsComeFromModule(symbol, moduleName) || this.aliasedSymbolComesFromModule(symbol, typeChecker, moduleName, visited)
     if (cachedByModule) {
       cachedByModule.set(moduleName, comesFromModule)
     } else {
@@ -1086,6 +1065,39 @@ export class TypeResolver {
     }
 
     return comesFromModule
+  }
+
+  private symbolDeclarationsComeFromModule(symbol: ts.Symbol, moduleName: string): boolean {
+    const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
+    return declarations.some(declaration => this.declarationComesFromModule(declaration, moduleName))
+  }
+
+  private declarationComesFromModule(declaration: ts.Declaration, moduleName: string): boolean {
+    const containingImportModuleSpecifier = this.getContainingImportModuleSpecifier(declaration)
+    if (containingImportModuleSpecifier === moduleName) {
+      return true
+    }
+
+    const fileName = declaration.getSourceFile().fileName.replaceAll('\\', '/')
+    return fileName.includes(`/node_modules/${moduleName}/`)
+  }
+
+  private getContainingImportModuleSpecifier(node: ts.Node): string | undefined {
+    let current: ts.Node | undefined = node.parent
+    while (current && !ts.isImportDeclaration(current)) {
+      current = current.parent
+    }
+
+    return current && ts.isStringLiteral(current.moduleSpecifier) ? current.moduleSpecifier.text : undefined
+  }
+
+  private aliasedSymbolComesFromModule(symbol: ts.Symbol, typeChecker: ts.TypeChecker, moduleName: string, visited: Set<ts.Symbol>): boolean {
+    if ((symbol.flags & ts.SymbolFlags.Alias) === 0) {
+      return false
+    }
+
+    const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
+    return aliasedSymbol !== symbol && this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
   }
 
   private getLiteralValue(typeNode: ts.LiteralTypeNode): string | number | boolean | null {
@@ -1801,56 +1813,72 @@ export class TypeResolver {
   }
 
   private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.Node): Context {
-    let newContext: Context = {}
-
     // Inline object types don't contribute generic declarations, so they map to an empty context.
-    if (!this.current.typeChecker) {
-      return newContext
+    const typeParameters = this.getTypeParametersForTargetEntity(targetEntity)
+    if (!typeParameters?.length) {
+      return {}
     }
 
-    if (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity)) {
-      return newContext
-    }
+    let newContext: Context = {}
+    for (let index = 0; index < typeParameters.length; index += 1) {
+      const typeParameter = typeParameters[index]
+      const resolvedType = this.resolveContextualTypeArgument(type, typeParameter, index)
 
-    const declarations = this.getModelTypeDeclarations(targetEntity)
-
-    const firstDeclaration = declarations[0] as DeclarationWithTypeParameters | undefined
-    const typeParameters = firstDeclaration?.typeParameters
-
-    if (typeParameters) {
-      for (let index = 0; index < typeParameters.length; index++) {
-        const typeParameter = typeParameters[index]
-        const typeArg = type.typeArguments?.[index]
-        let resolvedType: ts.TypeNode
-        let name: string | undefined
-        let resolvedTsType: ts.Type | undefined
-        // Argument may be a forward reference from context
-        if (typeArg && ts.isTypeReferenceNode(typeArg) && ts.isIdentifier(typeArg.typeName) && this.context[typeArg.typeName.text]) {
-          const contextualType = this.context[typeArg.typeName.text]
-          resolvedType = contextualType.type
-          name = contextualType.name
-          resolvedTsType = contextualType.resolvedType
-        } else if (typeArg) {
-          resolvedType = typeArg
-          resolvedTsType = resolvedType.pos !== -1 ? this.current.typeChecker.getTypeFromTypeNode(resolvedType) : this.getReferencerTypeArgument(index)
-        } else if (typeParameter.default) {
-          resolvedType = typeParameter.default
-          resolvedTsType = resolvedType.pos !== -1 ? this.current.typeChecker.getTypeFromTypeNode(resolvedType) : this.getReferencerTypeArgument(index)
-        } else {
-          throw new GenerateMetadataError(`Could not find a value for type parameter ${typeParameter.name.text}`, type)
-        }
-
-        newContext = {
-          ...newContext,
-          [typeParameter.name.text]: {
-            type: resolvedType,
-            name: name || this.calcTypeName(resolvedType),
-            resolvedType: resolvedTsType,
-          },
-        }
+      newContext = {
+        ...newContext,
+        [typeParameter.name.text]: {
+          type: resolvedType.type,
+          name: resolvedType.name || this.calcTypeName(resolvedType.type),
+          resolvedType: resolvedType.resolvedType,
+        },
       }
     }
+
     return newContext
+  }
+
+  private getTypeParametersForTargetEntity(targetEntity: ts.Node): ts.NodeArray<ts.TypeParameterDeclaration> | undefined {
+    if (!this.current.typeChecker || (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity))) {
+      return undefined
+    }
+
+    const firstDeclaration = this.getModelTypeDeclarations(targetEntity)[0] as DeclarationWithTypeParameters | undefined
+    return firstDeclaration?.typeParameters
+  }
+
+  private resolveContextualTypeArgument(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, typeParameter: ts.TypeParameterDeclaration, index: number): ResolvedContextualTypeArgument {
+    const typeArgument = type.typeArguments?.[index]
+    const contextualType = this.getForwardReferencedContextType(typeArgument)
+    if (contextualType) {
+      return contextualType
+    }
+
+    const resolvedType = typeArgument ?? typeParameter.default
+    if (!resolvedType) {
+      throw new GenerateMetadataError(`Could not find a value for type parameter ${typeParameter.name.text}`, type)
+    }
+
+    return {
+      type: resolvedType,
+      name: undefined,
+      resolvedType: this.getResolvedTypeForContextTypeArgument(resolvedType, index),
+    }
+  }
+
+  private getForwardReferencedContextType(typeArgument: ts.TypeNode | undefined): Context[string] | undefined {
+    if (!typeArgument || !ts.isTypeReferenceNode(typeArgument) || !ts.isIdentifier(typeArgument.typeName)) {
+      return undefined
+    }
+
+    return this.context[typeArgument.typeName.text]
+  }
+
+  private getResolvedTypeForContextTypeArgument(typeNode: ts.TypeNode, index: number): ts.Type | undefined {
+    if (typeNode.pos === -1) {
+      return this.getReferencerTypeArgument(index)
+    }
+
+    return this.current.typeChecker.getTypeFromTypeNode(typeNode)
   }
 
   private getReferencerTypeArgument(index: number): ts.Type | undefined {
