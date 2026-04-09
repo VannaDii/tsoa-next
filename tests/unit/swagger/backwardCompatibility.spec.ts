@@ -744,7 +744,7 @@ describe('Backward compatibility regressions', () => {
       expect((spec.paths['/dice/gameboard'].get!.responses['200'] as Swagger.Response3).content?.['application/json'].schema).to.deep.equal({
         $ref: '#/components/schemas/DiceGameboardResponse',
       })
-      expect((spec.paths['/dice/roll'].post!.requestBody as Swagger.RequestBody3).content?.['application/json'].schema).to.deep.equal({
+      expect((spec.paths['/dice/roll'].post!.requestBody as Swagger.RequestBody).content?.['application/json'].schema).to.deep.equal({
         allOf: [{ $ref: '#/components/schemas/DiceRollRequestWithLegacy' }],
         'x-schema-validator': 'io-ts',
       })
