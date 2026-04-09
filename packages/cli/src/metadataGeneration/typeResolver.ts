@@ -21,10 +21,11 @@ const inProgressTypes: { [typeName: string]: Array<(realType: Tsoa.ReferenceType
 
 type UsableDeclaration = ts.InterfaceDeclaration | ts.ClassDeclaration | ts.PropertySignature | ts.TypeAliasDeclaration | ts.EnumMember
 type UsableDeclarationWithoutPropertySignature = Exclude<UsableDeclaration, ts.PropertySignature>
-interface Context {
+export interface Context {
   [name: string]: {
     type: ts.TypeNode
     name: string
+    resolvedType?: ts.Type
   }
 }
 
@@ -33,6 +34,11 @@ type DeclarationWithTypeParameters = ts.Declaration & {
 }
 type IoTsUtilityType = 'TypeOf' | 'Branded' | 'Brand'
 type DefaultStringDelimiter = '"' | "'" | '`'
+type ResolvedContextualTypeArgument = {
+  type: ts.TypeNode
+  name?: string
+  resolvedType?: ts.Type
+}
 
 interface DefaultFormattingState {
   formatted: string
@@ -41,9 +47,31 @@ interface DefaultFormattingState {
 
 const escapedDoubleQuote = String.raw`\"`
 const backslash = '\\'
+const symbolModuleOriginCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, Map<string, boolean>>>()
+const ioTsUtilityTypeCache = new WeakMap<ts.TypeChecker, WeakMap<ts.Symbol, IoTsUtilityType | false>>()
 
 const hasInitializer = (declaration: ts.Declaration): declaration is ts.Declaration & { initializer: ts.Expression } => 'initializer' in declaration && declaration.initializer !== undefined
 const objectHasOwn = Object.hasOwn as (value: object, key: PropertyKey) => boolean
+
+const getSymbolModuleOriginCache = (typeChecker: ts.TypeChecker): WeakMap<ts.Symbol, Map<string, boolean>> => {
+  let cache = symbolModuleOriginCache.get(typeChecker)
+  if (!cache) {
+    cache = new WeakMap<ts.Symbol, Map<string, boolean>>()
+    symbolModuleOriginCache.set(typeChecker, cache)
+  }
+
+  return cache
+}
+
+const getIoTsUtilityTypeCache = (typeChecker: ts.TypeChecker): WeakMap<ts.Symbol, IoTsUtilityType | false> => {
+  let cache = ioTsUtilityTypeCache.get(typeChecker)
+  if (!cache) {
+    cache = new WeakMap<ts.Symbol, IoTsUtilityType | false>()
+    ioTsUtilityTypeCache.set(typeChecker, cache)
+  }
+
+  return cache
+}
 
 const getSyntheticOrigin = (symbol: ts.Symbol): ts.Symbol | undefined => {
   const symbolWithLinks = symbol as ts.Symbol & { links?: { syntheticOrigin?: ts.Symbol } }
@@ -190,6 +218,11 @@ export class TypeResolver {
   }
 
   public resolve(): Tsoa.Type {
+    const recoverableTypeReference = this.getRecoverableTypeReferenceNode()
+    if (recoverableTypeReference) {
+      return this.resolveTypeReferenceNode(recoverableTypeReference, this.current, this.context, this.parentNode)
+    }
+
     const parentJsDocTagNames = this.parentNode ? getJSDocTagNames(this.parentNode) : undefined
     const primitiveType = new PrimitiveTransformer().transform(this.current.defaultNumberType, this.typeNode, parentJsDocTagNames)
     if (primitiveType) {
@@ -203,6 +236,15 @@ export class TypeResolver {
 
     throwUnless(ts.isTypeReferenceNode(this.typeNode), new GenerateMetadataError(`Unknown type: ${ts.SyntaxKind[this.typeNode.kind]}`, this.typeNode))
     return this.resolveTypeReferenceNode(this.typeNode, this.current, this.context, this.parentNode)
+  }
+
+  private getRecoverableTypeReferenceNode(): ts.TypeReferenceNode | undefined {
+    if (!ts.isIdentifier(this.typeNode) && !ts.isQualifiedName(this.typeNode)) {
+      return undefined
+    }
+
+    const parent = this.typeNode.parent
+    return parent && ts.isTypeReferenceNode(parent) && parent.typeName === this.typeNode ? parent : undefined
   }
 
   private resolveNonReferenceTypeNode(): Tsoa.Type | undefined {
@@ -599,7 +641,7 @@ export class TypeResolver {
       return undefined
     }
 
-    const subResult = new TypeResolver(contextualType.type, current, parentNode, context).resolve()
+    const subResult = new TypeResolver(contextualType.type, current, parentNode, context, contextualType.resolvedType).resolve()
     if (subResult.dataType === 'any') {
       return this.createStringAndNumberUnion()
     }
@@ -757,21 +799,46 @@ export class TypeResolver {
     indexType: ts.LiteralTypeNode,
   ): Tsoa.Type {
     const propertyName = ts.isStringLiteral(indexType.literal) || ts.isNumericLiteral(indexType.literal) ? indexType.literal.text : indexType.literal.getText()
-    const symbol = typeChecker.getPropertyOfType(typeChecker.getTypeFromTypeNode(objectType), propertyName)
-    throwUnless(symbol, new GenerateMetadataError(`Could not determine the keys on ${typeChecker.typeToString(typeChecker.getTypeFromTypeNode(objectType))}`, typeNode))
+    const { type: resolvedObjectType, typeNode: resolvedObjectTypeNode } = this.resolveContextualIndexedAccessObjectType(objectType, typeChecker, context)
+    const symbol = typeChecker.getPropertyOfType(resolvedObjectType, propertyName)
+    throwUnless(symbol, new GenerateMetadataError(`Could not determine the keys on ${typeChecker.typeToString(resolvedObjectType)}`, typeNode))
 
     if (this.symbolHasTypeDeclaration(symbol.valueDeclaration)) {
       return new TypeResolver(symbol.valueDeclaration.type, current, typeNode, context).resolve()
     }
 
-    const declarationType = typeChecker.getTypeOfSymbolAtLocation(symbol, objectType)
+    const declarationType = typeChecker.getTypeOfSymbolAtLocation(symbol, resolvedObjectTypeNode)
     try {
-      return new TypeResolver(typeChecker.typeToTypeNode(declarationType, objectType, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
+      return new TypeResolver(typeChecker.typeToTypeNode(declarationType, resolvedObjectTypeNode, ts.NodeBuilderFlags.NoTruncation)!, current, typeNode, context).resolve()
     } catch {
       const typeNodeForError = typeChecker.typeToTypeNode(declarationType, undefined, ts.NodeBuilderFlags.NoTruncation)!
       const typeName = typeChecker.typeToString(typeChecker.getTypeFromTypeNode(typeNodeForError))
       throw new GenerateMetadataError(`Could not determine the keys on ${typeName}`, typeNode)
     }
+  }
+
+  private resolveContextualIndexedAccessObjectType(objectType: ts.TypeNode, typeChecker: ts.TypeChecker, context: Context): { type: ts.Type; typeNode: ts.TypeNode } {
+    const contextualTypeNode = this.getContextualIndexedAccessObjectTypeNode(objectType, context)
+    const resolvedTypeNode = contextualTypeNode ?? objectType
+
+    const contextualType = contextualTypeNode && ts.isTypeReferenceNode(objectType) && ts.isIdentifier(objectType.typeName) ? context[objectType.typeName.text] : undefined
+
+    return {
+      type: contextualType?.resolvedType ?? typeChecker.getTypeFromTypeNode(resolvedTypeNode),
+      typeNode: resolvedTypeNode,
+    }
+  }
+
+  private getContextualIndexedAccessObjectTypeNode(objectType: ts.TypeNode, context: Context): ts.TypeNode | undefined {
+    if (ts.isParenthesizedTypeNode(objectType)) {
+      return this.getContextualIndexedAccessObjectTypeNode(objectType.type, context)
+    }
+
+    if (!ts.isTypeReferenceNode(objectType) || !ts.isIdentifier(objectType.typeName)) {
+      return undefined
+    }
+
+    return context[objectType.typeName.text]?.type
   }
 
   private symbolHasTypeDeclaration(node: ts.Node | undefined): node is ts.HasType & { type: ts.TypeNode } {
@@ -863,14 +930,14 @@ export class TypeResolver {
     const decodedSymbol = current.typeChecker.getPropertyOfType(codecType, '_A')
     if (decodedSymbol) {
       const decodedType = current.typeChecker.getTypeOfSymbolAtLocation(decodedSymbol, codecTypeArgument)
-      const decodedNode = current.typeChecker.typeToTypeNode(decodedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+      const decodedNode = this.normalizeTypeNodeFromBuilder(current.typeChecker.typeToTypeNode(decodedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation))
       if (decodedNode) {
         return new TypeResolver(decodedNode, current, parentNode, context, decodedType).resolve()
       }
     }
 
     const resolvedType = current.typeChecker.getTypeFromTypeNode(typeNode)
-    const resolvedNode = current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation)
+    const resolvedNode = this.normalizeTypeNodeFromBuilder(current.typeChecker.typeToTypeNode(resolvedType, undefined, ts.NodeBuilderFlags.InTypeAlias | ts.NodeBuilderFlags.NoTruncation))
     if (resolvedNode && !ts.isTypeReferenceNode(resolvedNode)) {
       return new TypeResolver(resolvedNode, current, parentNode, context, resolvedType).resolve()
     }
@@ -901,14 +968,15 @@ export class TypeResolver {
         return undefined
       case 'Promise':
         if (typeArguments?.length === 1) {
-          return new TypeResolver(typeArguments[0], current, parentNode, context).resolve()
+          const promisedType = this.getPromisedTypeOfReferencer(current.typeChecker)
+          return new TypeResolver(typeArguments[0], current, parentNode, context, promisedType).resolve()
         }
         return undefined
       case 'String':
         return { dataType: 'string' }
       default:
         if (context[typeName]) {
-          return new TypeResolver(context[typeName].type, current, parentNode, context).resolve()
+          return new TypeResolver(context[typeName].type, current, parentNode, context, context[typeName].resolvedType).resolve()
         }
         return undefined
     }
@@ -948,21 +1016,30 @@ export class TypeResolver {
       return undefined
     }
 
+    const cache = getIoTsUtilityTypeCache(typeChecker)
+    if (cache.has(symbol)) {
+      const cachedType = cache.get(symbol)
+      return cachedType || undefined
+    }
+
     visited.add(symbol)
 
     if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
       const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
       const aliasedType = this.getIoTsUtilityTypeFromSymbol(aliasedSymbol, typeChecker, visited)
       if (aliasedType) {
+        cache.set(symbol, aliasedType)
         return aliasedType
       }
     }
 
     const symbolName = symbol.getName()
     if ((symbolName === 'TypeOf' || symbolName === 'Branded' || symbolName === 'Brand') && this.symbolComesFromModule(symbol, typeChecker, 'io-ts')) {
+      cache.set(symbol, symbolName)
       return symbolName
     }
 
+    cache.set(symbol, false)
     return undefined
   }
 
@@ -971,33 +1048,56 @@ export class TypeResolver {
       return false
     }
 
+    const moduleCache = getSymbolModuleOriginCache(typeChecker)
+    const cachedByModule = moduleCache.get(symbol)
+    const cachedResult = cachedByModule?.get(moduleName)
+    if (cachedResult !== undefined) {
+      return cachedResult
+    }
+
     visited.add(symbol)
 
+    const comesFromModule = this.symbolDeclarationsComeFromModule(symbol, moduleName) || this.aliasedSymbolComesFromModule(symbol, typeChecker, moduleName, visited)
+    if (cachedByModule) {
+      cachedByModule.set(moduleName, comesFromModule)
+    } else {
+      moduleCache.set(symbol, new Map([[moduleName, comesFromModule]]))
+    }
+
+    return comesFromModule
+  }
+
+  private symbolDeclarationsComeFromModule(symbol: ts.Symbol, moduleName: string): boolean {
     const declarations = symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
-    for (const declaration of declarations) {
-      let current: ts.Node | undefined = declaration.parent
-      while (current && !ts.isImportDeclaration(current)) {
-        current = current.parent
-      }
+    return declarations.some(declaration => this.declarationComesFromModule(declaration, moduleName))
+  }
 
-      if (current && ts.isImportDeclaration(current) && ts.isStringLiteral(current.moduleSpecifier) && current.moduleSpecifier.text === moduleName) {
-        return true
-      }
-
-      const fileName = declaration.getSourceFile().fileName.replaceAll('\\', '/')
-      if (fileName.includes(`/node_modules/${moduleName}/`)) {
-        return true
-      }
+  private declarationComesFromModule(declaration: ts.Declaration, moduleName: string): boolean {
+    const containingImportModuleSpecifier = this.getContainingImportModuleSpecifier(declaration)
+    if (containingImportModuleSpecifier === moduleName) {
+      return true
     }
 
-    if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-      const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
-      if (aliasedSymbol !== symbol) {
-        return this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
-      }
+    const fileName = declaration.getSourceFile().fileName.replaceAll('\\', '/')
+    return fileName.includes(`/node_modules/${moduleName}/`)
+  }
+
+  private getContainingImportModuleSpecifier(node: ts.Node): string | undefined {
+    let current: ts.Node | undefined = node.parent
+    while (current && !ts.isImportDeclaration(current)) {
+      current = current.parent
     }
 
-    return false
+    return current && ts.isStringLiteral(current.moduleSpecifier) ? current.moduleSpecifier.text : undefined
+  }
+
+  private aliasedSymbolComesFromModule(symbol: ts.Symbol, typeChecker: ts.TypeChecker, moduleName: string, visited: Set<ts.Symbol>): boolean {
+    if ((symbol.flags & ts.SymbolFlags.Alias) === 0) {
+      return false
+    }
+
+    const aliasedSymbol = typeChecker.getAliasedSymbol(symbol)
+    return aliasedSymbol !== symbol && this.symbolComesFromModule(aliasedSymbol, typeChecker, moduleName, visited)
   }
 
   private getLiteralValue(typeNode: ts.LiteralTypeNode): string | number | boolean | null {
@@ -1713,50 +1813,105 @@ export class TypeResolver {
   }
 
   private typeArgumentsToContext(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, targetEntity: ts.Node): Context {
-    let newContext: Context = {}
-
     // Inline object types don't contribute generic declarations, so they map to an empty context.
-    if (!this.current.typeChecker) {
-      return newContext
+    const typeParameters = this.getTypeParametersForTargetEntity(targetEntity)
+    if (!typeParameters?.length) {
+      return {}
     }
 
-    if (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity)) {
-      return newContext
-    }
+    let newContext: Context = {}
+    for (let index = 0; index < typeParameters.length; index += 1) {
+      const typeParameter = typeParameters[index]
+      const resolvedType = this.resolveContextualTypeArgument(type, typeParameter, index)
 
-    const declarations = this.getModelTypeDeclarations(targetEntity)
-
-    const firstDeclaration = declarations[0] as DeclarationWithTypeParameters | undefined
-    const typeParameters = firstDeclaration?.typeParameters
-
-    if (typeParameters) {
-      for (let index = 0; index < typeParameters.length; index++) {
-        const typeParameter = typeParameters[index]
-        const typeArg = type.typeArguments?.[index]
-        let resolvedType: ts.TypeNode
-        let name: string | undefined
-        // Argument may be a forward reference from context
-        if (typeArg && ts.isTypeReferenceNode(typeArg) && ts.isIdentifier(typeArg.typeName) && this.context[typeArg.typeName.text]) {
-          resolvedType = this.context[typeArg.typeName.text].type
-          name = this.context[typeArg.typeName.text].name
-        } else if (typeArg) {
-          resolvedType = typeArg
-        } else if (typeParameter.default) {
-          resolvedType = typeParameter.default
-        } else {
-          throw new GenerateMetadataError(`Could not find a value for type parameter ${typeParameter.name.text}`, type)
-        }
-
-        newContext = {
-          ...newContext,
-          [typeParameter.name.text]: {
-            type: resolvedType,
-            name: name || this.calcTypeName(resolvedType),
-          },
-        }
+      newContext = {
+        ...newContext,
+        [typeParameter.name.text]: {
+          type: resolvedType.type,
+          name: resolvedType.name || this.calcTypeName(resolvedType.type),
+          resolvedType: resolvedType.resolvedType,
+        },
       }
     }
+
     return newContext
+  }
+
+  private getTypeParametersForTargetEntity(targetEntity: ts.Node): ts.NodeArray<ts.TypeParameterDeclaration> | undefined {
+    if (!this.current.typeChecker || (!ts.isIdentifier(targetEntity) && !ts.isQualifiedName(targetEntity))) {
+      return undefined
+    }
+
+    const firstDeclaration = this.getModelTypeDeclarations(targetEntity)[0] as DeclarationWithTypeParameters | undefined
+    return firstDeclaration?.typeParameters
+  }
+
+  private resolveContextualTypeArgument(type: ts.TypeReferenceNode | ts.ExpressionWithTypeArguments, typeParameter: ts.TypeParameterDeclaration, index: number): ResolvedContextualTypeArgument {
+    const typeArgument = type.typeArguments?.[index]
+    const contextualType = this.getForwardReferencedContextType(typeArgument)
+    if (contextualType) {
+      return contextualType
+    }
+
+    const resolvedType = typeArgument ?? typeParameter.default
+    if (!resolvedType) {
+      throw new GenerateMetadataError(`Could not find a value for type parameter ${typeParameter.name.text}`, type)
+    }
+
+    return {
+      type: resolvedType,
+      name: undefined,
+      resolvedType: this.getResolvedTypeForContextTypeArgument(resolvedType, index),
+    }
+  }
+
+  private getForwardReferencedContextType(typeArgument: ts.TypeNode | undefined): Context[string] | undefined {
+    if (!typeArgument || !ts.isTypeReferenceNode(typeArgument) || !ts.isIdentifier(typeArgument.typeName)) {
+      return undefined
+    }
+
+    return this.context[typeArgument.typeName.text]
+  }
+
+  private getResolvedTypeForContextTypeArgument(typeNode: ts.TypeNode, index: number): ts.Type | undefined {
+    if (typeNode.pos === -1) {
+      return this.getReferencerTypeArgument(index)
+    }
+
+    return this.current.typeChecker.getTypeFromTypeNode(typeNode)
+  }
+
+  private getReferencerTypeArgument(index: number): ts.Type | undefined {
+    const referencer = this.referencer as ts.Type & {
+      aliasTypeArguments?: readonly ts.Type[]
+      typeArguments?: readonly ts.Type[]
+    }
+
+    return referencer?.aliasTypeArguments?.[index] ?? referencer?.typeArguments?.[index]
+  }
+
+  private getPromisedTypeOfReferencer(typeChecker: ts.TypeChecker): ts.Type | undefined {
+    if (!this.referencer) {
+      return undefined
+    }
+
+    const extendedTypeChecker = typeChecker as ts.TypeChecker & {
+      getPromisedTypeOfPromise?: (type: ts.Type) => ts.Type | undefined
+    }
+
+    return extendedTypeChecker.getPromisedTypeOfPromise?.(this.referencer)
+  }
+
+  private normalizeTypeNodeFromBuilder(node: ts.Node | undefined): ts.TypeNode | undefined {
+    if (!node) {
+      return undefined
+    }
+
+    if (ts.isIdentifier(node) || ts.isQualifiedName(node)) {
+      return ts.factory.createTypeReferenceNode(node, undefined)
+    }
+
+    return node as ts.TypeNode
   }
 
   private getReferenceAliasProperties(referenceType: Tsoa.RefAliasType): Tsoa.Property[] {
