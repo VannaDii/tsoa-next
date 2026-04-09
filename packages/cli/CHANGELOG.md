@@ -1,5 +1,12 @@
 # @tsoa-next/cli
 
+## 8.0.3
+
+### Patch Changes
+
+- 4fd4531: Fixes metadata spec generation for JSDoc comments.
+  - @tsoa-next/runtime@8.0.3
+
 ## 8.0.2
 
 ### Patch Changes
