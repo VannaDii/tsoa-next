@@ -56,6 +56,10 @@ export class MetadataGenerator {
 
   private extractNodeFromProgramSourceFiles() {
     this.program.getSourceFiles().forEach(sf => {
+      if (sf.isDeclarationFile || this.program.isSourceFileFromExternalLibrary(sf)) {
+        return
+      }
+
       if (this.ignorePaths?.length) {
         for (const path of this.ignorePaths) {
           if (minimatch(sf.fileName, path)) {

@@ -5,6 +5,7 @@ import { Config as BaseConfig, Tsoa } from '@tsoa-next/runtime'
 import { DefaultRouteGenerator } from '../routeGeneration/defaultRouteGenerator'
 import { fsMkDir } from '../utils/fs'
 import * as path from 'node:path'
+import { existsSync } from 'node:fs'
 
 export async function generateRoutes<Config extends ExtendedRoutesConfig>(
   routesConfig: Config,
@@ -40,25 +41,42 @@ function normalizeRelativeImportPath(targetPath: string): string {
   return relativePath.startsWith('.') ? relativePath : `./${relativePath}`
 }
 
+function localImportCandidateExists(targetPath: string): boolean {
+  const resolvedPath = path.resolve(targetPath)
+
+  if (existsSync(resolvedPath)) {
+    return true
+  }
+
+  for (const extension of ['.ts', '.mts', '.cts', '.js', '.mjs', '.cjs']) {
+    if (existsSync(`${resolvedPath}${extension}`) || existsSync(path.join(resolvedPath, `index${extension}`))) {
+      return true
+    }
+  }
+
+  return false
+}
+
 async function getRouteGenerator<Config extends ExtendedRoutesConfig>(metadata: Tsoa.Metadata, routesConfig: Config) {
   // default route generator for express/koa/hapi
   // custom route generator
   const routeGenerator = routesConfig.routeGenerator
   if (routeGenerator !== undefined) {
     if (typeof routeGenerator === 'string') {
-      try {
-        // try as a module import
-        const module = (await import(routeGenerator)) as RouteGeneratorModule<Config>
-        return new module.default(metadata, routesConfig)
-      } catch (moduleImportError) {
+      const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
+      const importAttempts = localImportCandidateExists(routeGenerator) ? [relativeImportPath, routeGenerator] : [routeGenerator, relativeImportPath]
+      const importErrors: unknown[] = []
+
+      for (const importTarget of importAttempts) {
         try {
-          const relativeImportPath = normalizeRelativeImportPath(routeGenerator)
-          const module = (await import(relativeImportPath)) as RouteGeneratorModule<Config>
+          const module = (await import(importTarget)) as RouteGeneratorModule<Config>
           return new module.default(metadata, routesConfig)
-        } catch (relativeImportError) {
-          throw new AggregateError([moduleImportError, relativeImportError], `Failed to load route generator '${routeGenerator}' as a module import or relative path.`)
+        } catch (error) {
+          importErrors.push(error)
         }
       }
+
+      throw new AggregateError(importErrors, `Failed to load route generator '${routeGenerator}' as a module import or relative path.`)
     }
 
     return new routeGenerator(metadata, routesConfig)
