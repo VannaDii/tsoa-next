@@ -217,6 +217,34 @@ const formatFailureReason = (reason: unknown): string => {
   return String(reason)
 }
 
+const formatDiscoveredCommandPrefix = (displayPath: string): string => `[${displayPath}] `
+
+const executeDiscoveredTask = async <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
+  commandName: string,
+  api: CLIApi,
+  args: TArguments,
+  configurationPath: ConfigArgs['configuration'] | undefined,
+  displayPath: string,
+  execute: (api: CLIApi, configurationPath: ConfigArgs['configuration'] | undefined, resolvedArgs: TArguments) => Promise<unknown>,
+) => {
+  return await outputPrefixStorage.run(formatDiscoveredCommandPrefix(displayPath), async () => {
+    console.log(`Starting ${commandName}`)
+    const result = await execute(api, configurationPath, args)
+    console.log(`Finished ${commandName}`)
+    return result
+  })
+}
+
+const createDiscoveredCommandTask = <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
+  commandName: string,
+  api: CLIApi,
+  args: TArguments,
+  discoveredConfig: Awaited<ReturnType<typeof ensureDiscoveredConfigs>>[number],
+  execute: (api: CLIApi, configurationPath: ConfigArgs['configuration'] | undefined, resolvedArgs: TArguments) => Promise<unknown>,
+) => {
+  return async () => await executeDiscoveredTask(commandName, api, args, discoveredConfig.absolutePath, discoveredConfig.displayPath, execute)
+}
+
 const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | SpecCommandArguments>(
   commandName: string,
   args: TArguments,
@@ -236,16 +264,7 @@ const runDiscoveredCommand = async <TArguments extends ConfigCommandArguments | 
   const results = await withPatchedConsole(async () => {
     return await runTasksWithConcurrency(
       concurrency,
-      discoveredConfigs.map(discoveredConfig => {
-        return async () => {
-          return await outputPrefixStorage.run(`[${discoveredConfig.displayPath}] `, async () => {
-            console.log(`Starting ${commandName}`)
-            const result = await execute(api, discoveredConfig.absolutePath, args)
-            console.log(`Finished ${commandName}`)
-            return result
-          })
-        }
-      }),
+      discoveredConfigs.map(discoveredConfig => createDiscoveredCommandTask(commandName, api, args, discoveredConfig, execute)),
     )
   })
 

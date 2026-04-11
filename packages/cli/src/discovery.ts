@@ -1,7 +1,7 @@
 import { lstat, readdir, realpath, stat } from 'node:fs/promises'
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { glob, hasMagic } from 'glob'
-import type { Stats } from 'node:fs'
+import type { Dirent, Stats } from 'node:fs'
 
 const discoverableConfigFileNames = new Set(['tsoa.json', 'tsoa.yaml', 'tsoa.yml', 'tsoa.config.js', 'tsoa.config.cjs'])
 const skippedDirectoryNames = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.turbo', '.cache'])
@@ -23,6 +23,12 @@ export interface DiscoveryResult {
 type DirectoryLikeEntry = {
   name: string
   path: string
+}
+
+type DiscoveryAccumulator = {
+  results: DiscoveredConfigFile[]
+  seenDirectoryRealPaths: Set<string>
+  seenFileRealPaths: Set<string>
 }
 
 const normalizePathForDisplay = (value: string) => value.replaceAll(sep, '/')
@@ -65,7 +71,98 @@ const addDiscoveredConfig = async (path: string, displayBasePath: string, seenRe
   })
 }
 
-const scanDirectoryTree = async (rootPath: string, displayBasePath: string, seenDirectoryRealPaths: Set<string>, seenFileRealPaths: Set<string>, results: DiscoveredConfigFile[]): Promise<void> => {
+const createDiscoveryAccumulator = (): DiscoveryAccumulator => ({
+  results: [],
+  seenDirectoryRealPaths: new Set<string>(),
+  seenFileRealPaths: new Set<string>(),
+})
+
+const sortDiscoveredConfigs = (results: DiscoveredConfigFile[]) => {
+  results.sort((left, right) => left.sortKey.localeCompare(right.sortKey))
+}
+
+const enqueueDirectoryIfIncluded = (pendingDirectories: DirectoryLikeEntry[], parentPath: string, name: string) => {
+  if (skippedDirectoryNames.has(name)) {
+    return
+  }
+
+  pendingDirectories.push({
+    name,
+    path: join(parentPath, name),
+  })
+}
+
+const getOptionalSymbolicTargetStats = async (symbolicPath: string): Promise<Stats | undefined> => {
+  try {
+    return await stat(symbolicPath)
+  } catch (error) {
+    if (isFileSystemMissingError(error)) {
+      return undefined
+    }
+
+    throw error
+  }
+}
+
+const getRequiredSymbolicTargetStats = async (input: string, symbolicPath: string): Promise<Stats> => {
+  const symbolicTargetStats = await getOptionalSymbolicTargetStats(symbolicPath)
+  if (!symbolicTargetStats) {
+    throw new Error(`Discover path '${input}' does not exist.`)
+  }
+
+  return symbolicTargetStats
+}
+
+const processDirectoryEntry = async (
+  entry: Dirent,
+  currentDirectoryPath: string,
+  displayBasePath: string,
+  pendingDirectories: DirectoryLikeEntry[],
+  accumulator: DiscoveryAccumulator,
+): Promise<void> => {
+  if (entry.isDirectory()) {
+    enqueueDirectoryIfIncluded(pendingDirectories, currentDirectoryPath, entry.name)
+    return
+  }
+
+  const entryPath = join(currentDirectoryPath, entry.name)
+
+  if (entry.isFile()) {
+    await addDiscoveredConfig(entryPath, displayBasePath, accumulator.seenFileRealPaths, accumulator.results)
+    return
+  }
+
+  if (!entry.isSymbolicLink()) {
+    return
+  }
+
+  const symbolicTargetStats = await getOptionalSymbolicTargetStats(entryPath)
+  if (!symbolicTargetStats) {
+    return
+  }
+
+  if (symbolicTargetStats.isDirectory()) {
+    enqueueDirectoryIfIncluded(pendingDirectories, currentDirectoryPath, entry.name)
+    return
+  }
+
+  if (symbolicTargetStats.isFile()) {
+    await addDiscoveredConfig(entryPath, displayBasePath, accumulator.seenFileRealPaths, accumulator.results)
+  }
+}
+
+const processRootPath = async (rootPath: string, rootStats: Stats, displayBasePath: string, accumulator: DiscoveryAccumulator): Promise<void> => {
+  if (rootStats.isDirectory()) {
+    await scanDirectoryTree(rootPath, displayBasePath, accumulator)
+    return
+  }
+
+  if (rootStats.isFile()) {
+    await addDiscoveredConfig(rootPath, displayBasePath, accumulator.seenFileRealPaths, accumulator.results)
+  }
+}
+
+const scanDirectoryTree = async (rootPath: string, displayBasePath: string, accumulator: DiscoveryAccumulator): Promise<void> => {
   const pendingDirectories: DirectoryLikeEntry[] = [{ name: basename(rootPath), path: rootPath }]
 
   while (pendingDirectories.length > 0) {
@@ -75,58 +172,15 @@ const scanDirectoryTree = async (rootPath: string, displayBasePath: string, seen
     }
 
     const currentRealPath = await realpath(currentDirectory.path)
-    if (seenDirectoryRealPaths.has(currentRealPath)) {
+    if (accumulator.seenDirectoryRealPaths.has(currentRealPath)) {
       continue
     }
 
-    seenDirectoryRealPaths.add(currentRealPath)
+    accumulator.seenDirectoryRealPaths.add(currentRealPath)
 
     const directoryEntries = await readdir(currentDirectory.path, { withFileTypes: true })
     for (const entry of directoryEntries) {
-      if (entry.isDirectory()) {
-        if (!skippedDirectoryNames.has(entry.name)) {
-          pendingDirectories.push({
-            name: entry.name,
-            path: join(currentDirectory.path, entry.name),
-          })
-        }
-        continue
-      }
-
-      if (entry.isFile()) {
-        await addDiscoveredConfig(join(currentDirectory.path, entry.name), displayBasePath, seenFileRealPaths, results)
-        continue
-      }
-
-      if (!entry.isSymbolicLink()) {
-        continue
-      }
-
-      const symbolicPath = join(currentDirectory.path, entry.name)
-      let symbolicTargetStats: Stats
-      try {
-        symbolicTargetStats = await stat(symbolicPath)
-      } catch (error) {
-        if (isFileSystemMissingError(error)) {
-          continue
-        }
-
-        throw error
-      }
-
-      if (symbolicTargetStats.isDirectory()) {
-        if (!skippedDirectoryNames.has(entry.name)) {
-          pendingDirectories.push({
-            name: entry.name,
-            path: symbolicPath,
-          })
-        }
-        continue
-      }
-
-      if (symbolicTargetStats.isFile()) {
-        await addDiscoveredConfig(symbolicPath, displayBasePath, seenFileRealPaths, results)
-      }
+      await processDirectoryEntry(entry, currentDirectory.path, displayBasePath, pendingDirectories, accumulator)
     }
   }
 }
@@ -141,7 +195,7 @@ const resolvePathInput = (input: string): string => {
 
 const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
   const resolvedPath = resolvePathInput(input)
-  let rootStats: Stats
+  let rootStats = undefined as Stats | undefined
   try {
     rootStats = await lstat(resolvedPath)
   } catch (error) {
@@ -152,39 +206,41 @@ const discoverFromPath = async (input: string): Promise<DiscoveryResult> => {
     throw error
   }
 
-  const seenDirectoryRealPaths = new Set<string>()
-  const seenFileRealPaths = new Set<string>()
-  const results: DiscoveredConfigFile[] = []
+  const accumulator = createDiscoveryAccumulator()
 
-  if (rootStats.isDirectory()) {
-    await scanDirectoryTree(resolvedPath, resolvedPath, seenDirectoryRealPaths, seenFileRealPaths, results)
-  } else if (rootStats.isFile()) {
-    await addDiscoveredConfig(resolvedPath, resolvedPath, seenFileRealPaths, results)
-  } else if (rootStats.isSymbolicLink()) {
-    let symbolicTargetStats: Stats
-    try {
-      symbolicTargetStats = await stat(resolvedPath)
-    } catch (error) {
-      if (isFileSystemMissingError(error)) {
-        throw new Error(`Discover path '${input}' does not exist.`)
-      }
-
-      throw error
-    }
-    if (symbolicTargetStats.isDirectory()) {
-      await scanDirectoryTree(resolvedPath, resolvedPath, seenDirectoryRealPaths, seenFileRealPaths, results)
-    } else if (symbolicTargetStats.isFile()) {
-      await addDiscoveredConfig(resolvedPath, resolvedPath, seenFileRealPaths, results)
-    }
+  if (!rootStats) {
+    throw new Error(`Discover path '${input}' does not exist.`)
   }
 
-  results.sort((left, right) => left.sortKey.localeCompare(right.sortKey))
+  if (rootStats.isSymbolicLink()) {
+    const symbolicTargetStats = await getRequiredSymbolicTargetStats(input, resolvedPath)
+    await processRootPath(resolvedPath, symbolicTargetStats, resolvedPath, accumulator)
+  } else {
+    await processRootPath(resolvedPath, rootStats, resolvedPath, accumulator)
+  }
+
+  sortDiscoveredConfigs(accumulator.results)
 
   return {
     effectiveRoot: resolvedPath,
-    matches: results,
+    matches: accumulator.results,
     mode: 'path',
   }
+}
+
+const processGlobMatch = async (expandedPath: string, displayBasePath: string, accumulator: DiscoveryAccumulator): Promise<void> => {
+  const expandedPathStats = await lstat(expandedPath)
+  if (expandedPathStats.isSymbolicLink()) {
+    const symbolicTargetStats = await getOptionalSymbolicTargetStats(expandedPath)
+    if (!symbolicTargetStats) {
+      return
+    }
+
+    await processRootPath(expandedPath, symbolicTargetStats, displayBasePath, accumulator)
+    return
+  }
+
+  await processRootPath(expandedPath, expandedPathStats, displayBasePath, accumulator)
 }
 
 const discoverFromGlob = async (input: string): Promise<DiscoveryResult> => {
@@ -193,49 +249,18 @@ const discoverFromGlob = async (input: string): Promise<DiscoveryResult> => {
     throw new Error(`No filesystem entries matched discover glob '${input}'.`)
   }
 
-  const seenDirectoryRealPaths = new Set<string>()
-  const seenFileRealPaths = new Set<string>()
-  const results: DiscoveredConfigFile[] = []
+  const accumulator = createDiscoveryAccumulator()
   const displayBasePath = process.cwd()
 
   for (const expandedPath of expandedPaths) {
-    const expandedPathStats = await lstat(expandedPath)
-    if (expandedPathStats.isDirectory()) {
-      await scanDirectoryTree(expandedPath, displayBasePath, seenDirectoryRealPaths, seenFileRealPaths, results)
-      continue
-    }
-
-    if (expandedPathStats.isFile()) {
-      await addDiscoveredConfig(expandedPath, displayBasePath, seenFileRealPaths, results)
-      continue
-    }
-
-    if (!expandedPathStats.isSymbolicLink()) {
-      continue
-    }
-
-    let symbolicTargetStats: Stats
-    try {
-      symbolicTargetStats = await stat(expandedPath)
-    } catch (error) {
-      if (isFileSystemMissingError(error)) {
-        continue
-      }
-
-      throw error
-    }
-    if (symbolicTargetStats.isDirectory()) {
-      await scanDirectoryTree(expandedPath, displayBasePath, seenDirectoryRealPaths, seenFileRealPaths, results)
-    } else if (symbolicTargetStats.isFile()) {
-      await addDiscoveredConfig(expandedPath, displayBasePath, seenFileRealPaths, results)
-    }
+    await processGlobMatch(expandedPath, displayBasePath, accumulator)
   }
 
-  results.sort((left, right) => left.sortKey.localeCompare(right.sortKey))
+  sortDiscoveredConfigs(accumulator.results)
 
   return {
     effectiveRoot: displayBasePath,
-    matches: results,
+    matches: accumulator.results,
     mode: 'glob',
   }
 }
