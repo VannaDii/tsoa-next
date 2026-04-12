@@ -125,6 +125,8 @@ This feature is fully opt-in. If you do not use `@Validate(...)`, existing inter
 
 Check out the [guides](https://tsoa-next.dev/)
 
+Use the companion [playground repository](https://github.com/tsoa-next/playground) for runnable example apps and server-focused scenarios.
+
 See example controllers in [the tests](https://github.com/tsoa-next/tsoa-next/tree/main/tests/fixtures/controllers)
 
 See example models in [the tests](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)

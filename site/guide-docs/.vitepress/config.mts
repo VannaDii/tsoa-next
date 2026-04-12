@@ -98,6 +98,10 @@ export default defineConfig({
         target: '_self',
       },
       {
+        text: 'Playground',
+        link: 'https://github.com/tsoa-next/playground',
+      },
+      {
         text: 'GitHub',
         link: 'https://github.com/tsoa-next/tsoa-next',
       },
