@@ -39,11 +39,61 @@ type UiAssetBundle = {
   preset?: string
 }
 
-const memoryCache = new Map<string, string>()
+const memoryCache = new WeakMap<SpecGenerator, Map<string, string>>()
 const assetCache = new Map<string, Promise<string>>()
+const controllerCacheScopes = new WeakMap<object, string>()
+const specGeneratorCacheScopes = new WeakMap<SpecGenerator, string>()
+let controllerCacheScopeId = 0
+let specGeneratorCacheScopeId = 0
 
-function isReadableStream(value: unknown): value is Readable {
-  return value instanceof Readable || (typeof value === 'object' && value !== null && 'pipe' in value && typeof (value as Readable).pipe === 'function')
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+  return value != null && typeof (value as AsyncIterable<unknown>)[Symbol.asyncIterator] === 'function'
+}
+
+function isReadableStream(value: unknown): value is Readable | NodeJS.ReadableStream | AsyncIterable<unknown> {
+  return (
+    isAsyncIterable(value) ||
+    value instanceof Readable ||
+    (typeof value === 'object' &&
+      value !== null &&
+      'pipe' in value &&
+      typeof (value as NodeJS.ReadableStream).pipe === 'function' &&
+      'on' in value &&
+      typeof (value as NodeJS.ReadableStream).on === 'function')
+  )
+}
+
+function getMemoryCache(specGenerator: SpecGenerator) {
+  const cached = memoryCache.get(specGenerator)
+  if (cached) {
+    return cached
+  }
+
+  const created = new Map<string, string>()
+  memoryCache.set(specGenerator, created)
+  return created
+}
+
+function getControllerCacheScope(controllerClass: object) {
+  const cached = controllerCacheScopes.get(controllerClass)
+  if (cached) {
+    return cached
+  }
+
+  const created = `controller:${controllerCacheScopeId++}`
+  controllerCacheScopes.set(controllerClass, created)
+  return created
+}
+
+function getSpecGeneratorCacheScope(specGenerator: SpecGenerator) {
+  const cached = specGeneratorCacheScopes.get(specGenerator)
+  if (cached) {
+    return cached
+  }
+
+  const created = `spec-generator:${specGeneratorCacheScopeId++}`
+  specGeneratorCacheScopes.set(specGenerator, created)
+  return created
 }
 
 function getContentType(target: BuiltinSpecPathTarget): string {
@@ -72,18 +122,20 @@ function getFormat(target: BuiltinSpecPathTarget | 'custom'): SpecCacheContext['
   }
 }
 
-function getCacheHandler(cache: SpecPathDefinition['cache']): SpecCacheHandler | undefined {
+function getCacheHandler({ specGenerator, specPath }: Pick<SpecContextArgs, 'specGenerator' | 'specPath'>): SpecCacheHandler | undefined {
+  const { cache } = specPath
   if (cache === 'none') {
     return undefined
   }
 
   if (cache === 'memory') {
+    const scopedMemoryCache = getMemoryCache(specGenerator)
     return {
       get(context) {
-        return memoryCache.get(context.cacheKey)
+        return scopedMemoryCache.get(context.cacheKey)
       },
       set(context, value) {
-        memoryCache.set(context.cacheKey, value)
+        scopedMemoryCache.set(context.cacheKey, value)
       },
     }
   }
@@ -91,7 +143,7 @@ function getCacheHandler(cache: SpecPathDefinition['cache']): SpecCacheHandler |
   return cache
 }
 
-function getCacheKey({ fullPath, runtime, specPath }: Pick<SpecContextArgs, 'fullPath' | 'runtime' | 'specPath'>) {
+function getCacheKey({ controllerClass, fullPath, runtime, specGenerator, specPath }: Pick<SpecContextArgs, 'controllerClass' | 'fullPath' | 'runtime' | 'specGenerator' | 'specPath'>) {
   const format = typeof specPath.target === 'string' ? specPath.target : 'custom'
   let cacheMode: 'none' | 'memory' | 'custom'
   if (specPath.cache === 'none') {
@@ -104,9 +156,11 @@ function getCacheKey({ fullPath, runtime, specPath }: Pick<SpecContextArgs, 'ful
 
   const cacheInput = JSON.stringify({
     cache: cacheMode,
+    controller: getControllerCacheScope(controllerClass),
     fullPath,
     format,
     runtime,
+    specGenerator: getSpecGeneratorCacheScope(specGenerator),
   })
 
   return createHash('sha256').update(cacheInput).digest('hex')
@@ -138,18 +192,42 @@ async function readResponseValue(value: SpecResponseValue): Promise<string> {
     return value
   }
 
-  const chunks: Uint8Array[] = []
-  for await (const chunk of value as AsyncIterable<unknown>) {
-    if (typeof chunk === 'string') {
-      chunks.push(Buffer.from(chunk))
-    } else if (chunk instanceof Uint8Array) {
-      chunks.push(chunk)
-    } else {
-      chunks.push(Buffer.from(String(chunk)))
+  if (isAsyncIterable(value)) {
+    const chunks: Uint8Array[] = []
+    for await (const chunk of value) {
+      chunks.push(toResponseChunkBuffer(chunk))
     }
+
+    return Buffer.concat(chunks).toString('utf8')
   }
 
-  return Buffer.concat(chunks).toString('utf8')
+  return readReadableStreamFromEvents(value)
+}
+
+function toResponseChunkBuffer(chunk: unknown): Uint8Array {
+  if (typeof chunk === 'string') {
+    return Buffer.from(chunk)
+  }
+
+  if (chunk instanceof Uint8Array) {
+    return chunk
+  }
+
+  return Buffer.from(String(chunk))
+}
+
+function readReadableStreamFromEvents(value: NodeJS.ReadableStream): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+
+    value.on('data', (chunk: unknown) => {
+      chunks.push(toResponseChunkBuffer(chunk))
+    })
+    value.once('end', () => {
+      resolve(Buffer.concat(chunks).toString('utf8'))
+    })
+    value.once('error', reject)
+  })
 }
 
 function serializeSpecForHtml(spec: Swagger.Spec) {
@@ -382,7 +460,7 @@ async function resolveHandlerResponse(specPath: SpecPathDefinition, context: Spe
 
 export async function resolveSpecPathResponse(args: SpecContextArgs): Promise<ResolvedSpecResponse> {
   const context = createSpecRequestContext(args)
-  const cacheHandler = getCacheHandler(args.specPath.cache)
+  const cacheHandler = getCacheHandler(args)
   if (cacheHandler) {
     const cached = await cacheHandler.get(context)
     if (cached !== undefined) {

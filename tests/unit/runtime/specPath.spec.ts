@@ -1,15 +1,11 @@
 import { expect } from 'chai'
 import 'mocha'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
 import { fetchSpecPaths, SpecCacheHandler, SpecPath } from '../../../packages/runtime/src/decorators/specPath'
 import { resolveSpecPathResponse } from '../../../packages/runtime/src/routeGeneration/specPathSupport'
 import { Swagger } from '../../../packages/runtime/src/swagger/swagger'
-
-const repoRoot = resolve(__dirname, '..', '..', '..')
-const nodeModulesRoot = join(repoRoot, 'packages', 'runtime', 'node_modules')
-const createdPackageRoots: string[] = []
+import { cleanupMockUiPeers, installMockUiPeers } from '../../utils/mockUiPeers'
 
 const readStream = async (stream: Readable) => {
   const chunks: Buffer[] = []
@@ -28,49 +24,13 @@ const spec: Swagger.Spec2 = {
   paths: {},
 }
 
-function ensurePackageFile(packageName: string, relativePath: string, contents: string) {
-  const packageRoot = join(nodeModulesRoot, packageName)
-  if (!existsSync(packageRoot)) {
-    createdPackageRoots.push(packageRoot)
-  }
-
-  mkdirSync(join(packageRoot, relativePath === 'package.json' ? '' : relativePath.substring(0, relativePath.lastIndexOf('/'))), { recursive: true })
-  writeFileSync(join(packageRoot, relativePath), contents, 'utf8')
-}
-
-function createMockUiPeers() {
-  if (!existsSync(nodeModulesRoot)) {
-    mkdirSync(nodeModulesRoot, { recursive: true })
-  }
-
-  if (!existsSync(join(nodeModulesRoot, 'swagger-ui-express'))) {
-    ensurePackageFile('swagger-ui-express', 'package.json', JSON.stringify({ name: 'swagger-ui-express', version: '0.0.0' }))
-    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/package.json', JSON.stringify({ name: 'swagger-ui-dist', version: '0.0.0' }))
-    ensurePackageFile(
-      'swagger-ui-express',
-      'node_modules/swagger-ui-dist/swagger-ui-bundle.js',
-      'window.SwaggerUIBundle = window.SwaggerUIBundle || function () {}; window.SwaggerUIBundle.presets = { apis: {} };',
-    )
-    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/swagger-ui-standalone-preset.js', 'window.SwaggerUIStandalonePreset = {};')
-    ensurePackageFile('swagger-ui-express', 'node_modules/swagger-ui-dist/swagger-ui.css', 'body { background: #fff; }')
-  }
-
-  if (!existsSync(join(nodeModulesRoot, 'redoc'))) {
-    ensurePackageFile('redoc', 'package.json', JSON.stringify({ name: 'redoc', version: '0.0.0' }))
-    ensurePackageFile('redoc', 'bundles/redoc.standalone.js', 'window.Redoc = { init: function () {} };')
-  }
-
-  if (!existsSync(join(nodeModulesRoot, 'rapidoc'))) {
-    ensurePackageFile('rapidoc', 'package.json', JSON.stringify({ name: 'rapidoc', version: '0.0.0' }))
-    ensurePackageFile('rapidoc', 'dist/rapidoc-min.js', 'window.customElements = window.customElements || { define: function () {} };')
-  }
-}
-
 describe('SpecPath', () => {
+  before(() => {
+    installMockUiPeers()
+  })
+
   after(() => {
-    createdPackageRoots.forEach(packageRoot => {
-      rmSync(packageRoot, { force: true, recursive: true })
-    })
+    cleanupMockUiPeers()
   })
 
   it('stores default decorator values', () => {
@@ -252,9 +212,114 @@ describe('SpecPath', () => {
     expect(cacheWrites).to.equal(1)
   })
 
-  it('escapes spec titles before embedding UI HTML', async () => {
-    createMockUiPeers()
+  it('buffers stream-like custom responses that are not async iterable before caching', async () => {
+    let handlerCalls = 0
+    let cacheWrites = 0
+    let stored: string | undefined
 
+    const cache: SpecCacheHandler = {
+      get: () => stored,
+      set: (_context, value) => {
+        cacheWrites += 1
+        stored = value
+      },
+    }
+
+    const handler = async () => {
+      handlerCalls += 1
+      const stream = new EventEmitter() as NodeJS.ReadableStream
+      Object.assign(stream, {
+        pipe() {
+          return stream
+        },
+      })
+
+      setImmediate(() => {
+        stream.emit('data', 'stream-like response')
+        stream.emit('end')
+      })
+
+      return stream as unknown as Readable
+    }
+
+    @SpecPath('stream-like', handler, cache)
+    class StreamLikeSpecPathController {}
+
+    const [specPath] = fetchSpecPaths(StreamLikeSpecPathController)
+    if (!specPath) {
+      throw new Error('Expected @SpecPath metadata to be defined.')
+    }
+
+    const specGenerator = {
+      async getSpecObject() {
+        return spec
+      },
+      async getSpecString() {
+        return JSON.stringify(spec)
+      },
+    }
+
+    const first = await resolveSpecPathResponse({
+      controllerClass: StreamLikeSpecPathController,
+      fullPath: '/v1/spec/stream-like',
+      runtime: 'express',
+      specGenerator,
+      specPath,
+    })
+
+    expect(first.body).to.equal('stream-like response')
+    expect(handlerCalls).to.equal(1)
+    expect(cacheWrites).to.equal(1)
+  })
+
+  it('isolates memory cache entries per spec generator', async () => {
+    @SpecPath('isolated-memory')
+    class IsolatedMemorySpecPathController {}
+
+    const [specPath] = fetchSpecPaths(IsolatedMemorySpecPathController)
+    if (!specPath) {
+      throw new Error('Expected @SpecPath metadata to be defined.')
+    }
+
+    const createSpecGenerator = (title: string) => ({
+      async getSpecObject() {
+        return {
+          ...spec,
+          info: {
+            title,
+          },
+        }
+      },
+      async getSpecString() {
+        return JSON.stringify({
+          ...spec,
+          info: {
+            title,
+          },
+        })
+      },
+    })
+
+    const first = await resolveSpecPathResponse({
+      controllerClass: IsolatedMemorySpecPathController,
+      fullPath: '/v1/spec/isolated-memory',
+      runtime: 'express',
+      specGenerator: createSpecGenerator('first'),
+      specPath,
+    })
+    const second = await resolveSpecPathResponse({
+      controllerClass: IsolatedMemorySpecPathController,
+      fullPath: '/v1/spec/isolated-memory',
+      runtime: 'express',
+      specGenerator: createSpecGenerator('second'),
+      specPath,
+    })
+
+    expect(first.body).to.equal(JSON.stringify({ ...spec, info: { title: 'first' } }))
+    expect(second.body).to.equal(JSON.stringify({ ...spec, info: { title: 'second' } }))
+  })
+
+  it('escapes spec titles before embedding UI HTML', async () => {
     const htmlInjectionSpec: Swagger.Spec2 = {
       ...spec,
       info: {
