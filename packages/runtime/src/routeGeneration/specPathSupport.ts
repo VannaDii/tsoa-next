@@ -93,8 +93,17 @@ function getCacheHandler(cache: SpecPathDefinition['cache']): SpecCacheHandler |
 
 function getCacheKey({ fullPath, runtime, specPath }: Pick<SpecContextArgs, 'fullPath' | 'runtime' | 'specPath'>) {
   const format = typeof specPath.target === 'string' ? specPath.target : 'custom'
+  let cacheMode: 'none' | 'memory' | 'custom'
+  if (specPath.cache === 'none') {
+    cacheMode = 'none'
+  } else if (specPath.cache === 'memory') {
+    cacheMode = 'memory'
+  } else {
+    cacheMode = 'custom'
+  }
+
   const cacheInput = JSON.stringify({
-    cache: specPath.cache === 'none' ? 'none' : specPath.cache === 'memory' ? 'memory' : 'custom',
+    cache: cacheMode,
     fullPath,
     format,
     runtime,
@@ -144,7 +153,10 @@ async function readResponseValue(value: SpecResponseValue): Promise<string> {
 }
 
 function serializeSpecForHtml(spec: Swagger.Spec) {
-  return JSON.stringify(spec).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
+  return JSON.stringify(spec)
+    .replaceAll('<', String.raw`\u003c`)
+    .replaceAll('>', String.raw`\u003e`)
+    .replaceAll('&', String.raw`\u0026`)
 }
 
 function escapeHtmlText(value: string) {
@@ -184,7 +196,14 @@ async function readPeerFile(packageName: string, candidates: string[]): Promise<
 }
 
 async function readSwaggerDistAsset(runtime: SpecRuntime, assetName: 'swagger-ui-bundle.js' | 'swagger-ui-standalone-preset.js' | 'swagger-ui.css') {
-  const packageName = runtime === 'express' ? 'swagger-ui-express' : runtime === 'koa' ? 'swagger-ui-koa' : 'hapi-swagger'
+  let packageName: 'swagger-ui-express' | 'swagger-ui-koa' | 'hapi-swagger'
+  if (runtime === 'express') {
+    packageName = 'swagger-ui-express'
+  } else if (runtime === 'koa') {
+    packageName = 'swagger-ui-koa'
+  } else {
+    packageName = 'hapi-swagger'
+  }
 
   let packageJsonPath: string
   try {

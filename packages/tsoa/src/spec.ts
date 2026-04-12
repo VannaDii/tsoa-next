@@ -14,13 +14,11 @@ export function createOpenApiSpecGenerator(config?: RuntimeSpecConfigSnapshot): 
 
   const loadCli = async () => await import('@tsoa-next/cli')
   const getSpecObject: SpecGenerator['getSpecObject'] = async () => {
-    if (!specPromise) {
-      specPromise = (async () => {
-        const runtimeConfig = assertSpecConfig(config)
-        const cli = await loadCli()
-        return cli.buildSpec(runtimeConfig.spec, runtimeConfig.compilerOptions as import('typescript').CompilerOptions | undefined, runtimeConfig.ignore, undefined, runtimeConfig.defaultNumberType)
-      })()
-    }
+    specPromise ??= (async () => {
+      const runtimeConfig = assertSpecConfig(config)
+      const cli = await loadCli()
+      return cli.buildSpec(runtimeConfig.spec, runtimeConfig.compilerOptions as import('typescript').CompilerOptions | undefined, runtimeConfig.ignore, undefined, runtimeConfig.defaultNumberType)
+    })()
 
     return specPromise
   }
