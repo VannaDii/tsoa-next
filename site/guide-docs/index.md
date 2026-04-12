@@ -8,6 +8,8 @@ hero:
   actions:
     - text: Get Started →
       link: /getting-started
+    - text: Playground →
+      link: https://github.com/tsoa-next/playground
     - text: LLMs 🧠 →
       link: /llms.txt
 

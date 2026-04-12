@@ -1,5 +1,13 @@
 # Examples
 
+## Runnable example apps
+
+For end-to-end sample apps and framework-specific setups, use the companion [tsoa-next/playground](https://github.com/tsoa-next/playground) repository.
+That repo is the dedicated home for runnable `tsoa-next` scenarios across multiple server integrations as examples are added there.
+
+This guide focuses on OpenAPI examples and JSDoc example metadata inside a codebase.
+Reach for the playground repo when you want a full application you can clone, install, and run.
+
 Study after study shows that examples are a crucial part of learning new APIs ([1](https://www.cs.mcgill.ca/~martin/papers/software2009a.pdf), [2](https://sigdoc.acm.org/cdq/how-developers-use-api-documentation-an-observation-study/), [3](https://ase.cpsc.ucalgary.ca/wp-content/uploads/2018/05/A-Study-of-the-Effectiveness-of-Usage-Examples-in-REST-API-Documentation.pdf)).
 While certain issues, like type mismatches can be avoided by inferring examples from the JSON Schema (like the examples SwaggerUI automatically generates\*), it's often a lot more intuitive if we provide certain examples ourselves.
 

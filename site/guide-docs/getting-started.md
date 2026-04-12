@@ -27,7 +27,7 @@ git init
 npm init -y
 
 # Add our dependencies
-npm i tsoa-next express reflect-metadata
+npm i tsoa-next express
 npm i -D typescript @types/node @types/express
 
 # Initialize tsconfig.json
@@ -249,17 +249,18 @@ const port = process.env.PORT || 3000
 app.listen(port, () => console.log(`Example app listening at http://localhost:${port}`))
 ```
 
-## Building the routes file
+## Building the generated files
 
-At this point you may have noticed that TypeScript will not find the `RegisterRoutes` import from `build/routes`. That's because we haven't asked tsoa to create that yet.
+At this point you may have noticed that TypeScript will not find the `RegisterRoutes` import from `build/routes`.
+That is because we have not asked tsoa to generate the routes file and OpenAPI spec yet.
 Let's do that now:
 
 ```shell
 mkdir -p build # Create the build directory if it doesn't exist
-npm exec tsoa -- routes
+npm exec tsoa -- spec-and-routes
 ```
 
-Now your routes.ts file should've been created and you can compile TypeScript and start your server:
+Now your generated files should have been created and you can compile TypeScript and start your server:
 
 ```shell
 npm exec tsc -- --outDir build --experimentalDecorators

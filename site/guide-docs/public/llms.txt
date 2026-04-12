@@ -7,6 +7,7 @@ Canonical docs
 - Guides: https://tsoa-next.dev/introduction
 - API reference: https://tsoa-next.dev/reference/
 - GitHub: https://github.com/tsoa-next/tsoa-next
+- Playground: https://github.com/tsoa-next/playground
 
 Project overview
 - tsoa-next continues the original tsoa project.
@@ -22,7 +23,7 @@ Core ideas
 - OpenAPI 3 reduces schema-expressiveness gaps compared with OpenAPI 2.
 
 Quick start checklist
-1. Install runtime dependencies such as `tsoa-next`, your web framework, and `reflect-metadata` when your setup needs it.
+1. Install runtime dependencies such as `tsoa-next` and your web framework. Add `reflect-metadata` only when other tooling in your stack requires it directly.
 2. Install TypeScript and framework type packages.
 3. Create `tsoa.json` with at least:
    - `entryFile`
@@ -33,7 +34,7 @@ Quick start checklist
 4. Enable `experimentalDecorators` in `tsconfig.json`.
 5. Use named exports for controllers. Default-exported controllers are not supported.
 6. Write controllers with `@Route`, HTTP method decorators, and parameter decorators.
-7. Generate files with `tsoa spec` and `tsoa routes`, or use the programmatic APIs.
+7. Generate files with `tsoa spec-and-routes` for the common single-project flow, or run `tsoa spec` and `tsoa routes` separately when you need finer control.
 8. Import generated `RegisterRoutes` into the app, after body parsers and before final error handling.
 
 Important config notes
@@ -65,8 +66,10 @@ Controller authoring rules
 
 Generation commands
 - CLI:
+  - `tsoa spec-and-routes`
   - `tsoa spec`
   - `tsoa routes`
+  - `tsoa discover`
 - Programmatic:
   - import from `tsoa-next/cli`
   - `generateSpec(...)`
@@ -187,6 +190,8 @@ Path mapping and project structure
   - https://tsoa-next.dev/path-mapping
 
 Examples and migrations
+- Runnable example apps and server-focused scenarios:
+  - https://github.com/tsoa-next/playground
 - Examples guide:
   - https://tsoa-next.dev/examples
 - Upgrading guide:
