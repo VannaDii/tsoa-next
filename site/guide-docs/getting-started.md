@@ -35,6 +35,7 @@ npm exec tsc -- --init
 ```
 
 Generated routes import from `tsoa-next`, so the package your application installs is also the package used by controllers and generated `RegisterRoutes` files.
+You can also find the published package on [npm](https://www.npmjs.com/package/tsoa-next).
 
 ## Configuring tsoa and typescript
 
