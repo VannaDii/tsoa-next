@@ -71,8 +71,10 @@ export class ControllerGenerator {
     }
 
     const sourceFile = this.node.parent.getSourceFile()
+    const hasSpecPaths = this.hasSpecPaths()
 
     return {
+      ...(hasSpecPaths ? { hasSpecPaths: true } : {}),
       location: sourceFile.fileName,
       methods: this.buildMethods(),
       name: this.node.name.text,
@@ -416,5 +418,9 @@ export class ControllerGenerator {
   private getProduces(): string[] | undefined {
     const produces = getProduces(this.node, this.current.typeChecker)
     return produces.length ? produces : undefined
+  }
+
+  private hasSpecPaths(): boolean {
+    return getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'SpecPath', this.current.typeChecker).length > 0
   }
 }

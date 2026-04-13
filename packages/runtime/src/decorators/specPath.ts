@@ -38,6 +38,8 @@ export interface SpecRequestContext extends SpecCacheContext {
 
 /** Custom handler used by {@link SpecPath} to serve spec content. */
 export type SpecResponseHandler = (context: SpecRequestContext) => SpecResponseValue | Promise<SpecResponseValue>
+/** Gate handler used by {@link SpecPath} to decide whether a request may receive the spec response. */
+export type SpecPathGateHandler = (context: SpecRequestContext) => boolean | Promise<boolean>
 
 /** Cache adapter used by {@link SpecPath} to memoize generated responses. */
 export interface SpecCacheHandler {
@@ -49,13 +51,23 @@ export interface SpecCacheHandler {
 export type SpecPathTarget = BuiltinSpecPathTarget | SpecResponseHandler
 /** Cache strategy supported by {@link SpecPath}. */
 export type SpecPathCache = 'none' | 'memory' | SpecCacheHandler
+/** Gate strategy supported by {@link SpecPath}. */
+export type SpecPathGate = boolean | SpecPathGateHandler
+
+/** Options supported by {@link SpecPath}. */
+export interface SpecPathOptions {
+  cache?: SpecPathCache
+  gate?: SpecPathGate
+  target?: SpecPathTarget
+}
 
 /** Stored definition for a single declared {@link SpecPath}. */
 export interface SpecPathDefinition {
-  path: string
-  normalizedPath: string
-  target: SpecPathTarget
   cache: SpecPathCache
+  gate?: SpecPathGate
+  normalizedPath: string
+  path: string
+  target: SpecPathTarget
 }
 
 const SPEC_PATHS_SYMBOL = Symbol.for('@tsoa-next/spec-paths')
@@ -70,6 +82,10 @@ function getTargetDescription(target: SpecPathTarget) {
 
 function getCacheDescription(cache: SpecPathCache) {
   return typeof cache === 'string' ? cache : 'custom cache'
+}
+
+function isSpecPathOptions(value: SpecPathTarget | SpecPathOptions | undefined): value is SpecPathOptions {
+  return typeof value === 'object' && value !== null
 }
 
 function getExistingSpecPaths(target: object): SpecPathDefinition[] {
@@ -90,15 +106,31 @@ function normalizeSpecPath(path: string | undefined) {
   return normalisePath(path ?? 'spec', '/')
 }
 
+function resolveSpecPathOptions(targetOrOptions: SpecPathTarget | SpecPathOptions | undefined, cache: SpecPathCache): Pick<SpecPathDefinition, 'cache' | 'gate' | 'target'> {
+  if (isSpecPathOptions(targetOrOptions)) {
+    return {
+      cache: targetOrOptions.cache ?? 'memory',
+      gate: targetOrOptions.gate,
+      target: targetOrOptions.target ?? 'json',
+    }
+  }
+
+  return {
+    cache,
+    target: targetOrOptions ?? 'json',
+  }
+}
+
 /**
  * Registers a controller-local route that serves the generated OpenAPI document or a custom derived response.
  *
  * @param path The relative route path. Defaults to `spec`.
- * @param target The built-in documentation target or a custom response handler.
- * @param cache Cache strategy for generated responses. Defaults to in-memory caching.
+ * @param optionsOrTarget Either a `SpecPathOptions` object or the legacy target argument.
+ * @param cache Legacy cache strategy argument. Defaults to in-memory caching.
  */
-export function SpecPath(path = 'spec', target: SpecPathTarget = 'json', cache: SpecPathCache = 'memory'): ClassDecorator {
+export function SpecPath(path = 'spec', optionsOrTarget: SpecPathTarget | SpecPathOptions = 'json', cache: SpecPathCache = 'memory'): ClassDecorator {
   return classTarget => {
+    const resolvedOptions = resolveSpecPathOptions(optionsOrTarget, cache)
     const normalizedPath = normalizeSpecPath(path)
     const existing = getExistingSpecPaths(classTarget)
 
@@ -107,12 +139,17 @@ export function SpecPath(path = 'spec', target: SpecPathTarget = 'json', cache: 
       throw new Error(`Duplicate @SpecPath('${path}') found on '${className}'. Multiple SpecPath decorators must resolve to unique paths.`)
     }
 
-    existing.push({
-      cache,
+    const specPath: SpecPathDefinition = {
+      cache: resolvedOptions.cache,
       normalizedPath,
       path,
-      target,
-    })
+      target: resolvedOptions.target,
+    }
+    if (resolvedOptions.gate !== undefined) {
+      specPath.gate = resolvedOptions.gate
+    }
+
+    existing.push(specPath)
 
     defineSpecPaths(classTarget, existing)
   }
