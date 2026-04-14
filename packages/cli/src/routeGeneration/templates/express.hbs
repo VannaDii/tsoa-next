@@ -5,6 +5,7 @@ import type { AdditionalProps, Tsoa, TsoaRoute } from 'tsoa-next';
 import { fetchMiddlewares, ExpressTemplateService } from 'tsoa-next';
 {{#if useSpecPaths}}
 import { createOpenApiSpecGenerator, fetchSpecPaths, normalisePath, resolveSpecPathResponse } from 'tsoa-next';
+import { pipeline } from 'node:stream';
 {{/if}}
 {{#each controllers}}
 import { {{name}} } from '{{modulePath}}';
@@ -18,7 +19,6 @@ import { iocContainer } from '{{iocModule}}';
 import type { IocContainer, IocContainerFactory } from 'tsoa-next';
 {{/if}}
 import type { Request as ExRequest, Response as ExResponse, RequestHandler, Router } from 'express';
-import { pipeline } from 'node:stream';
 {{#if useFileUploads}}
 {{#if esm}}
 import multer from 'multer';

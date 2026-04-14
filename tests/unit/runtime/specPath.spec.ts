@@ -64,6 +64,15 @@ describe('SpecPath', () => {
     ])
   })
 
+  it('rejects mixing the options-object signature with the legacy cache argument', () => {
+    expect(() => {
+      @SpecPath('docs', { target: 'yaml' }, 'none')
+      class MixedSpecPathController {}
+
+      return MixedSpecPathController
+    }).to.throw('do not combine the options-object signature with the legacy third cache argument')
+  })
+
   it('accumulates multiple decorators on the same controller', () => {
     @SpecPath()
     @SpecPath('yaml', 'yaml', 'none')

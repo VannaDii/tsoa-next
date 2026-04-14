@@ -323,6 +323,7 @@ describe('RouteGenerator', () => {
       expect(routes).not.to.contain('createOpenApiSpecGenerator')
       expect(routes).not.to.contain('fetchSpecPaths')
       expect(routes).not.to.contain('resolveSpecPathResponse')
+      expect(routes).not.to.contain("import { pipeline } from 'node:stream';")
     })
 
     it('includes spec path support in generated routes when a controller uses @SpecPath', () => {
@@ -354,6 +355,7 @@ describe('RouteGenerator', () => {
       expect(routes).to.contain('createOpenApiSpecGenerator')
       expect(routes).to.contain('fetchSpecPaths')
       expect(routes).to.contain('resolveSpecPathResponse')
+      expect(routes).to.contain("import { pipeline } from 'node:stream';")
     })
   })
 

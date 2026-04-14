@@ -85,7 +85,11 @@ function getCacheDescription(cache: SpecPathCache) {
 }
 
 function isSpecPathOptions(value: SpecPathTarget | SpecPathOptions | undefined): value is SpecPathOptions {
-  return typeof value === 'object' && value !== null
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+
+  return Object.prototype.hasOwnProperty.call(value, 'cache') || Object.prototype.hasOwnProperty.call(value, 'gate') || Object.prototype.hasOwnProperty.call(value, 'target')
 }
 
 function getExistingSpecPaths(target: object): SpecPathDefinition[] {
@@ -108,6 +112,10 @@ function normalizeSpecPath(path: string | undefined) {
 
 function resolveSpecPathOptions(targetOrOptions: SpecPathTarget | SpecPathOptions | undefined, cache: SpecPathCache): Pick<SpecPathDefinition, 'cache' | 'gate' | 'target'> {
   if (isSpecPathOptions(targetOrOptions)) {
+    if (cache !== 'memory') {
+      throw new Error('Invalid @SpecPath usage: do not combine the options-object signature with the legacy third cache argument.')
+    }
+
     return {
       cache: targetOrOptions.cache ?? 'memory',
       gate: targetOrOptions.gate,
