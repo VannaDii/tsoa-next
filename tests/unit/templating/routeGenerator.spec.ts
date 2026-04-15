@@ -410,7 +410,6 @@ describe('RouteGenerator', () => {
       const template = readFileSync(generator.template, 'utf8')
       const routes = generator.buildContent(template)
       const embeddedSpecGeneratorArtifacts = JSON.parse(generator.buildContent('{{{json embeddedSpecGeneratorArtifacts}}}')) as {
-        json?: string
         spec?: { info?: { title?: string }; openapi?: string; paths?: Record<string, unknown> }
         yaml?: string
       }
@@ -420,7 +419,7 @@ describe('RouteGenerator', () => {
       expect(embeddedSpecGeneratorArtifacts.spec?.openapi).to.equal('3.1.0')
       expect(embeddedSpecGeneratorArtifacts.spec?.info?.title).to.equal('Embedded Test API')
       expect(embeddedSpecGeneratorArtifacts.spec?.paths).to.have.property('/example')
-      expect(embeddedSpecGeneratorArtifacts.json).to.contain('"openapi": "3.1.0"')
+      expect(embeddedSpecGeneratorArtifacts).not.to.have.property('json')
       expect(embeddedSpecGeneratorArtifacts.yaml).to.contain('openapi: 3.1.0')
     })
 

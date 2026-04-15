@@ -1,7 +1,6 @@
 import { expect } from 'chai'
 import 'mocha'
 import Module = require('node:module')
-import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
 const withBlockedRequires = async <T>(blocked: (id: string) => boolean, run: () => T | Promise<T>): Promise<T> => {
@@ -42,6 +41,7 @@ function reload(specifier: 'tsoa-next' | 'tsoa-next/cli') {
   clearModule('tsoa-next')
   clearModule('tsoa-next/cli')
   clearModule('@tsoa-next/cli')
+  clearModule('@tsoa-next/cli/metadataGeneration/metadataGenerator')
 
   const modulePath = require.resolve(specifier)
   delete require.cache[modulePath]
@@ -137,6 +137,7 @@ describe('Package boundary', () => {
 
   it('reuses embedded metadata when controller source globs are unavailable', async () => {
     const runtime = reload('tsoa-next')
+    const { MetadataGenerator } = require('@tsoa-next/cli/metadataGeneration/metadataGenerator') as typeof import('@tsoa-next/cli/metadataGeneration/metadataGenerator')
     const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
     const specConfig = {
       ...getDefaultExtendedOptions('.', './fixtures/controllers/getController.ts'),

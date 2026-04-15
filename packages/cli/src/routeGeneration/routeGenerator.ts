@@ -1,7 +1,6 @@
 import * as path from 'node:path'
 import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
-import { buildSpec, serializeSpec } from '../module/generate-spec'
 import { isRefType } from '../utils/internalTypeGuards'
 import { convertBracesPathParams, normalisePath } from '../utils/pathUtils'
 import { fsExists, fsReadFile } from '../utils/fs'
@@ -160,9 +159,9 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       return undefined
     }
 
+    const { buildSpec, serializeSpec } = require('../module/generate-spec') as typeof import('../module/generate-spec')
     const spec = buildSpec(this.options.runtimeSpecConfig.spec, undefined, undefined, this.metadata, this.options.runtimeSpecConfig.defaultNumberType)
     return {
-      json: serializeSpec(spec, false),
       spec,
       yaml: serializeSpec(spec, true),
     }
