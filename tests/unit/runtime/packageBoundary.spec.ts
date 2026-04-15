@@ -1,6 +1,7 @@
 import { expect } from 'chai'
 import 'mocha'
 import Module = require('node:module')
+import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
 const withBlockedRequires = (blocked: (id: string) => boolean, run: () => void) => {
@@ -104,6 +105,28 @@ describe('Package boundary', () => {
     const { getSpecString } = runtime.createOpenApiSpecGenerator({
       spec: specConfig,
     })
+
+    const specString = await getSpecString('json')
+
+    expect(specString).to.contain('"swagger": "2.0"')
+    expect(specString).to.contain('"/GetTest"')
+  })
+
+  it('reuses embedded metadata when controller source globs are unavailable', async () => {
+    const runtime = reload('tsoa-next')
+    const metadata = new MetadataGenerator('./fixtures/controllers/getController.ts').Generate()
+    const specConfig = {
+      ...getDefaultExtendedOptions('.', './fixtures/controllers/getController.ts'),
+      controllerPathGlobs: ['./fixtures/controllers/does-not-exist/**/*Controller.ts'],
+    }
+    const runtimeSpecConfig = {
+      metadata,
+      spec: specConfig,
+    } as Parameters<typeof runtime.createOpenApiSpecGenerator>[0]
+
+    // Intentionally detach the method to verify embedded metadata keeps the generator callable without relying on `this`.
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const { getSpecString } = runtime.createOpenApiSpecGenerator(runtimeSpecConfig)
 
     const specString = await getSpecString('json')
 

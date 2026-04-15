@@ -21,7 +21,13 @@ export function createOpenApiSpecGenerator(config?: RuntimeSpecConfigSnapshot): 
     specPromise ??= (async () => {
       const runtimeConfig = assertSpecConfig(config)
       const cli = await loadCli()
-      return cli.buildSpec(runtimeConfig.spec, runtimeConfig.compilerOptions as import('typescript').CompilerOptions | undefined, runtimeConfig.ignore, undefined, runtimeConfig.defaultNumberType)
+      return cli.buildSpec(
+        runtimeConfig.spec,
+        runtimeConfig.compilerOptions as import('typescript').CompilerOptions | undefined,
+        runtimeConfig.ignore,
+        runtimeConfig.metadata,
+        runtimeConfig.defaultNumberType,
+      )
     })()
 
     return specPromise

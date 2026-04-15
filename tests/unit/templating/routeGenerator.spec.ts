@@ -357,6 +357,43 @@ describe('RouteGenerator', () => {
       expect(routes).to.contain('resolveSpecPathResponse')
       expect(routes).to.contain("import { pipeline } from 'node:stream';")
     })
+
+    it('embeds metadata into runtimeSpecConfig for SpecPath routes', () => {
+      const metadata: Tsoa.Metadata = {
+        controllers: [
+          {
+            hasSpecPaths: true,
+            location: 'controller.ts',
+            methods: [],
+            name: 'ExampleController',
+            path: 'example',
+          },
+        ],
+        referenceTypeMap: {},
+      }
+
+      const generator = new DefaultRouteGenerator(metadata, {
+        bodyCoercion: true,
+        entryFile: 'mockEntryFile',
+        middleware: 'express',
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        routesDir: '.',
+        runtimeSpecConfig: {
+          spec: {
+            basePath: '/v1',
+            entryFile: 'mockEntryFile',
+            noImplicitAdditionalProperties: 'silently-remove-extras',
+            outputDirectory: '.',
+          },
+        },
+      })
+
+      const runtimeSpecConfig = JSON.parse(generator.buildContent('{{{json runtimeSpecConfig}}}')) as {
+        metadata?: Tsoa.Metadata
+      }
+
+      expect(runtimeSpecConfig.metadata).to.deep.equal(metadata)
+    })
   })
 
   describe('.generateRoutes', () => {

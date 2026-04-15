@@ -132,7 +132,12 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       iocModule,
       minimalSwaggerConfig: { noImplicitAdditionalProperties: this.options.noImplicitAdditionalProperties, bodyCoercion: this.options.bodyCoercion },
       models: this.buildModels(),
-      runtimeSpecConfig: this.options.runtimeSpecConfig,
+      runtimeSpecConfig: this.options.runtimeSpecConfig
+        ? {
+            ...this.options.runtimeSpecConfig,
+            metadata: this.metadata,
+          }
+        : undefined,
       useSpecPaths: this.metadata.controllers.some(controller => controller.hasSpecPaths === true),
       useFileUploads: this.metadata.controllers.some(controller => controller.methods.some(method => method.parameters.some(parameter => this.isFileUploadParameter(parameter)))),
       multerOpts: {
