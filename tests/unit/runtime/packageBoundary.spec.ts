@@ -4,7 +4,7 @@ import Module = require('node:module')
 import { MetadataGenerator } from '@tsoa-next/cli/metadataGeneration/metadataGenerator'
 import { getDefaultExtendedOptions } from '../../fixtures/defaultOptions'
 
-const withBlockedRequires = (blocked: (id: string) => boolean, run: () => void) => {
+const withBlockedRequires = async <T>(blocked: (id: string) => boolean, run: () => T | Promise<T>): Promise<T> => {
   const requireDescriptor = Object.getOwnPropertyDescriptor(Module.prototype, 'require')
 
   if (!requireDescriptor || typeof requireDescriptor.value !== 'function') {
@@ -22,7 +22,7 @@ const withBlockedRequires = (blocked: (id: string) => boolean, run: () => void) 
   }
 
   try {
-    run()
+    return await run()
   } finally {
     Object.defineProperty(Module.prototype, 'require', requireDescriptor)
   }
@@ -50,7 +50,7 @@ function reload(specifier: 'tsoa-next' | 'tsoa-next/cli') {
 
 describe('Package boundary', () => {
   it('loads runtime exports from tsoa-next without touching CLI dependencies', () => {
-    withBlockedRequires(
+    return withBlockedRequires(
       id => id === '@tsoa-next/cli' || id.startsWith('@tsoa-next/cli/') || id === 'yargs' || id === 'yargs/helpers',
       () => {
         const runtime = reload('tsoa-next')
@@ -58,6 +58,7 @@ describe('Package boundary', () => {
         expect(runtime.Get).to.be.a('function')
         expect(runtime.Route).to.be.a('function')
         expect(runtime.SpecPath).to.be.a('function')
+        expect(runtime.createEmbeddedSpecGenerator).to.be.a('function')
         expect(runtime.createOpenApiSpecGenerator).to.be.a('function')
         expect('generateRoutes' in runtime).to.equal(false)
         expect('generateSpec' in runtime).to.equal(false)
@@ -69,7 +70,7 @@ describe('Package boundary', () => {
   })
 
   it('loads programmatic APIs from tsoa-next/cli without touching yargs eagerly', () => {
-    withBlockedRequires(
+    return withBlockedRequires(
       id => id === 'yargs' || id === 'yargs/helpers',
       () => {
         const cli = reload('tsoa-next/cli')
@@ -86,7 +87,7 @@ describe('Package boundary', () => {
   })
 
   it('loads runCLI without touching heavy generation dependencies eagerly', () => {
-    withBlockedRequires(
+    return withBlockedRequires(
       id => id === './api' || id === 'typescript' || id === 'yaml' || id.endsWith('/api') || id.endsWith('/module/generate-routes') || id.endsWith('/module/generate-spec'),
       () => {
         clearModule('../../../packages/cli/src/runCLI')
@@ -110,6 +111,28 @@ describe('Package boundary', () => {
 
     expect(specString).to.contain('"swagger": "2.0"')
     expect(specString).to.contain('"/GetTest"')
+  })
+
+  it('serves embedded spec artifacts without touching CLI dependencies', async () => {
+    await withBlockedRequires(
+      id => id === '@tsoa-next/cli' || id.startsWith('@tsoa-next/cli/'),
+      async () => {
+        const runtime = reload('tsoa-next')
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        const { getSpecString } = runtime.createEmbeddedSpecGenerator({
+          json: '{"swagger":"2.0","info":{"title":"test"},"paths":{}}',
+          spec: {
+            info: { title: 'test' },
+            paths: {},
+            swagger: '2.0',
+          },
+          yaml: 'swagger: "2.0"\ninfo:\n  title: test\npaths: {}\n',
+        } as Parameters<typeof runtime.createEmbeddedSpecGenerator>[0])
+
+        expect(await getSpecString('json')).to.equal('{"swagger":"2.0","info":{"title":"test"},"paths":{}}')
+        expect(await getSpecString('yaml')).to.equal('swagger: "2.0"\ninfo:\n  title: test\npaths: {}\n')
+      },
+    )
   })
 
   it('reuses embedded metadata when controller source globs are unavailable', async () => {

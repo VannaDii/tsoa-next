@@ -1,4 +1,4 @@
-import type { RuntimeSpecConfigSnapshot, SpecGenerator } from '@tsoa-next/runtime'
+import type { EmbeddedSpecGeneratorArtifacts, RuntimeSpecConfigSnapshot, SpecGenerator } from '@tsoa-next/runtime'
 
 function assertSpecConfig(config?: RuntimeSpecConfigSnapshot): RuntimeSpecConfigSnapshot {
   if (!config) {
@@ -6,6 +6,46 @@ function assertSpecConfig(config?: RuntimeSpecConfigSnapshot): RuntimeSpecConfig
   }
 
   return config
+}
+
+function serializeEmbeddedJson(spec: EmbeddedSpecGeneratorArtifacts['spec']) {
+  return JSON.stringify(spec, null, '\t')
+}
+
+/**
+ * Creates a runtime spec generator from a prebuilt OpenAPI artifact embedded into generated route code.
+ * This keeps built-in `SpecPath` targets independent from source files and TypeScript analysis at request time.
+ */
+export function createEmbeddedSpecGenerator(artifacts: EmbeddedSpecGeneratorArtifacts): SpecGenerator {
+  const specPromise = Promise.resolve(artifacts.spec)
+  const stringCache = new Map<'json' | 'yaml', Promise<string>>()
+
+  const getSpecObject: SpecGenerator['getSpecObject'] = async () => specPromise
+
+  const getSpecString: SpecGenerator['getSpecString'] = async format => {
+    const cached = stringCache.get(format)
+    if (cached) {
+      return cached
+    }
+
+    const stringPromise =
+      format === 'json'
+        ? Promise.resolve(artifacts.json ?? serializeEmbeddedJson(artifacts.spec))
+        : artifacts.yaml !== undefined
+          ? Promise.resolve(artifacts.yaml)
+          : (async () => {
+              const cli = await import('@tsoa-next/cli')
+              return cli.serializeSpec(await getSpecObject(), true)
+            })()
+
+    stringCache.set(format, stringPromise)
+    return stringPromise
+  }
+
+  return {
+    getSpecObject,
+    getSpecString,
+  }
 }
 
 /**

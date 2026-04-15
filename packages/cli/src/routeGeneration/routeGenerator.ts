@@ -1,6 +1,7 @@
 import * as path from 'node:path'
 import type { ExtendedRoutesConfig } from '../api'
 import { Tsoa, TsoaRoute, assertNever } from '@tsoa-next/runtime'
+import { buildSpec, serializeSpec } from '../module/generate-spec'
 import { isRefType } from '../utils/internalTypeGuards'
 import { convertBracesPathParams, normalisePath } from '../utils/pathUtils'
 import { fsExists, fsReadFile } from '../utils/fs'
@@ -81,6 +82,8 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
     const canImportByAlias = true
 
     const normalisedBasePath = normalisePath(this.options.basePath as string, '/')
+    const useSpecPaths = this.metadata.controllers.some(controller => controller.hasSpecPaths === true)
+    const embeddedSpecGeneratorArtifacts = this.buildEmbeddedSpecGeneratorArtifacts(useSpecPaths)
 
     return {
       authenticationModule,
@@ -132,13 +135,14 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       iocModule,
       minimalSwaggerConfig: { noImplicitAdditionalProperties: this.options.noImplicitAdditionalProperties, bodyCoercion: this.options.bodyCoercion },
       models: this.buildModels(),
+      embeddedSpecGeneratorArtifacts,
       runtimeSpecConfig: this.options.runtimeSpecConfig
         ? {
             ...this.options.runtimeSpecConfig,
             metadata: this.metadata,
           }
         : undefined,
-      useSpecPaths: this.metadata.controllers.some(controller => controller.hasSpecPaths === true),
+      useSpecPaths,
       useFileUploads: this.metadata.controllers.some(controller => controller.methods.some(method => method.parameters.some(parameter => this.isFileUploadParameter(parameter)))),
       multerOpts: {
         limits: {
@@ -148,6 +152,19 @@ export abstract class AbstractRouteGenerator<Config extends ExtendedRoutesConfig
       } as Config['multerOpts'],
       useSecurity: this.metadata.controllers.some(controller => controller.methods.some(method => method.security.length > 0)),
       esm: this.options.esm,
+    }
+  }
+
+  protected buildEmbeddedSpecGeneratorArtifacts(useSpecPaths: boolean) {
+    if (!useSpecPaths || !this.options.runtimeSpecConfig) {
+      return undefined
+    }
+
+    const spec = buildSpec(this.options.runtimeSpecConfig.spec, undefined, undefined, this.metadata, this.options.runtimeSpecConfig.defaultNumberType)
+    return {
+      json: serializeSpec(spec, false),
+      spec,
+      yaml: serializeSpec(spec, true),
     }
   }
 
