@@ -31,13 +31,16 @@ export function createEmbeddedSpecGenerator(artifacts: EmbeddedSpecGeneratorArti
     let stringPromise: Promise<string>
     if (format === 'json') {
       stringPromise = Promise.resolve(artifacts.json ?? serializeEmbeddedJson(artifacts.spec))
-    } else if (artifacts.yaml !== undefined) {
-      stringPromise = Promise.resolve(artifacts.yaml)
     } else {
-      stringPromise = (async () => {
-        const cli = await import('@tsoa-next/cli')
-        return cli.serializeSpec(await getSpecObject(), true)
-      })()
+      const yaml = artifacts.yaml
+      if (yaml === undefined) {
+        stringPromise = (async () => {
+          const cli = await import('@tsoa-next/cli')
+          return cli.serializeSpec(await getSpecObject(), true)
+        })()
+      } else {
+        stringPromise = Promise.resolve(yaml)
+      }
     }
 
     stringCache.set(format, stringPromise)
