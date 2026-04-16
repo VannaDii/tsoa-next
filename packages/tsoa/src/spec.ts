@@ -36,10 +36,11 @@ export function createEmbeddedSpecGenerator(artifacts: EmbeddedSpecGeneratorArti
     } else {
       const yaml = artifacts.yaml
       if (yaml === undefined) {
-        stringPromise = (async () => {
-          const cli = await loadCli()
-          return cli.serializeSpec(await getSpecObject(), true)
-        })()
+        stringPromise = Promise.reject(
+          new Error(
+            'Embedded spec generator cannot produce YAML because no embedded YAML artifact was provided. Embed `artifacts.yaml` when generating routes, or use `createOpenApiSpecGenerator` if runtime CLI-based serialization is required.',
+          ),
+        )
       } else {
         stringPromise = Promise.resolve(yaml)
       }

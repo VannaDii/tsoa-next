@@ -135,6 +135,35 @@ describe('Package boundary', () => {
     )
   })
 
+  it('fails embedded YAML requests without touching CLI dependencies when YAML was not embedded', async () => {
+    await withBlockedRequires(
+      id => id === '@tsoa-next/cli' || id.startsWith('@tsoa-next/cli/'),
+      async () => {
+        const runtime = reload('tsoa-next')
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        const { getSpecString } = runtime.createEmbeddedSpecGenerator({
+          spec: {
+            info: { title: 'test' },
+            paths: {},
+            swagger: '2.0',
+          },
+        } as Parameters<typeof runtime.createEmbeddedSpecGenerator>[0])
+
+        let error: unknown
+        try {
+          await getSpecString('yaml')
+        } catch (caughtError) {
+          error = caughtError
+        }
+
+        expect(error).to.be.instanceOf(Error)
+        expect((error as Error).message).to.equal(
+          'Embedded spec generator cannot produce YAML because no embedded YAML artifact was provided. Embed `artifacts.yaml` when generating routes, or use `createOpenApiSpecGenerator` if runtime CLI-based serialization is required.',
+        )
+      },
+    )
+  })
+
   it('reuses embedded metadata when controller source globs are unavailable', async () => {
     const runtime = reload('tsoa-next')
     const { MetadataGenerator } = require('@tsoa-next/cli/metadataGeneration/metadataGenerator') as typeof import('@tsoa-next/cli/metadataGeneration/metadataGenerator')
