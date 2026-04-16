@@ -1,5 +1,7 @@
 import type { EmbeddedSpecGeneratorArtifacts, RuntimeSpecConfigSnapshot, SpecGenerator } from '@tsoa-next/runtime'
 
+const loadCli = async () => await import('@tsoa-next/cli')
+
 function assertSpecConfig(config?: RuntimeSpecConfigSnapshot): RuntimeSpecConfigSnapshot {
   if (!config) {
     throw new Error('SpecPath requires spec generation settings. Provide spec configuration when generating routes so built-in spec targets can rebuild the OpenAPI document at runtime.')
@@ -35,7 +37,7 @@ export function createEmbeddedSpecGenerator(artifacts: EmbeddedSpecGeneratorArti
       const yaml = artifacts.yaml
       if (yaml === undefined) {
         stringPromise = (async () => {
-          const cli = await import('@tsoa-next/cli')
+          const cli = await loadCli()
           return cli.serializeSpec(await getSpecObject(), true)
         })()
       } else {
@@ -61,7 +63,6 @@ export function createOpenApiSpecGenerator(config?: RuntimeSpecConfigSnapshot): 
   let specPromise: Promise<import('@tsoa-next/runtime').Swagger.Spec> | undefined
   const stringCache = new Map<'json' | 'yaml', Promise<string>>()
 
-  const loadCli = async () => await import('@tsoa-next/cli')
   const getSpecObject: SpecGenerator['getSpecObject'] = async () => {
     specPromise ??= (async () => {
       const runtimeConfig = assertSpecConfig(config)
