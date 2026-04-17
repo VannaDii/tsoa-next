@@ -5,10 +5,10 @@ For a full overview, please check out the [API Reference](../reference/).
 
 ## Security
 
-The `@Security` decorator can be used above controller methods to indicate that there should be authentication before running those methods. As described above, the authentication is done in a file that's referenced in tsoa's configuration. When using the `@Security` decorator, you can choose between having one or multiple authentication methods. If you choose to have multiple authentication methods, you can choose between having to pass one of the methods (OR):
+The `@Security` decorator can be used above controller methods to indicate that there should be authentication before running those methods. As described above, the authentication is done in a file that's referenced in tsoa's configuration. The scheme names are user-defined and must match the names in your OpenAPI security config and authentication module. When using the `@Security` decorator, you can choose between having one or multiple authentication methods. If you choose to have multiple authentication methods, you can choose between having to pass one of the methods (OR):
 
 ```ts
-@Security('tsoa_auth', ['write:pets', 'read:pets'])
+@Security('jwt', ['write:pets', 'read:pets'])
 @Security('api_key')
 @Get('OauthOrAPIkey')
 public async GetWithOrSecurity(@Request() request: express.Request): Promise<any> {
@@ -19,7 +19,7 @@ or having to pass all of them (AND):
 
 ```ts
 @Security({
-  tsoa_auth: ['write:pets', 'read:pets'],
+  jwt: ['write:pets', 'read:pets'],
   api_key: [],
 })
 @Get('OauthAndAPIkey')

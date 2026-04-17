@@ -1,6 +1,7 @@
 # Authentication
 
 Authentication is done using a middleware handler along with `@Security('name', ['scopes'])` decorator in your controller.
+The scheme name is user-defined: `jwt`, `api_key`, `session`, or `tsoa_auth` are all valid as long as you use the same name in `spec.securityDefinitions`, `@Security(...)`, and your authentication module.
 
 First, define the security definitions for OpenAPI, and also configure where the authentication middleware handler is. In this case, it is in the `authentication.ts` file.
 
@@ -13,7 +14,7 @@ First, define the security definitions for OpenAPI, and also configure where the
             "name": "access_token",
             "in": "query"
         },
-        "tsoa_auth": {
+        "jwt": {
             "type": "oauth2",
             "authorizationUrl": "http://swagger.io/api/oauth/dialog",
             "flow": "implicit",
@@ -34,7 +35,7 @@ First, define the security definitions for OpenAPI, and also configure where the
 
 In the middleware, export the function based on which library (Express, Koa, Hapi) you are using. You only create one function per runtime and handle the security types inside it. The `securityName` and `scopes` come from the annotation you put above your controller function.
 
-\* *securityDefinitions* name and *securityName* name should be the same
+\* The `securityDefinitions` key and the `securityName` you check in your authentication module must match exactly. `tsoa-next` does not reserve or special-case any particular name.
 
 `./authentication.ts`
 
@@ -63,7 +64,7 @@ export function expressAuthentication(
     }
   }
 
-  if (securityName === "tsoa_auth") {
+  if (securityName === "jwt") {
     const token =
       request.body.token ||
       request.query.token ||
@@ -124,7 +125,7 @@ export class SecureController {
   }
 
   @Response<{ message: string }>("404", "Not Found")
-  @Security("tsoa_auth", ["admin"])
+  @Security("jwt", ["admin"])
   @Get("EditUser")
   public async editUser(@Request() request: { user?: { id: number; name: string } }): Promise<{ id: number; name: string }> {
     if (!request.user) {
