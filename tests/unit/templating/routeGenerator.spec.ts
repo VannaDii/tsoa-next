@@ -295,6 +295,62 @@ describe('RouteGenerator', () => {
       expect(existingGetPaths).to.equal('["/v1/example/existing"]')
     })
 
+    for (const middleware of ['express', 'koa', 'hapi'] as const) {
+      it(`registers SpecPath routes before regular ${middleware} routes`, () => {
+        const generator = new DefaultRouteGenerator(
+          {
+            controllers: [
+              {
+                location: 'dynamic-controller.ts',
+                methods: [
+                  {
+                    extensions: [],
+                    isHidden: false,
+                    method: 'get' as const,
+                    name: 'getDynamicRouteMatch',
+                    parameters: [],
+                    path: '{resource}',
+                    responses: [],
+                    security: [],
+                    type: {
+                      dataType: 'void' as const,
+                    },
+                  },
+                ],
+                name: 'DynamicController',
+                path: '{tenant}',
+              },
+              {
+                hasSpecPaths: true,
+                location: 'spec-controller.ts',
+                methods: [],
+                name: 'SpecController',
+                path: 'SpecPath',
+              },
+            ],
+            referenceTypeMap: {},
+          },
+          {
+            basePath: '/v1',
+            bodyCoercion: true,
+            entryFile: 'mockEntryFile',
+            middleware,
+            noImplicitAdditionalProperties: 'silently-remove-extras',
+            routesDir: '.',
+          },
+        )
+
+        const template = readFileSync(generator.template, 'utf8')
+        const routes = generator.buildContent(template)
+        const specPathRegistration = 'for (const specPath of fetchSpecPaths(DynamicController))'
+        const dynamicRouteRegistration = middleware === 'hapi' ? "path: '/v1/{tenant}/{resource}'" : "'/v1/:tenant/:resource'"
+
+        expect(routes.indexOf(specPathRegistration)).to.be.greaterThan(-1)
+        expect(routes.indexOf(dynamicRouteRegistration)).to.be.greaterThan(-1)
+        expect(routes.indexOf(specPathRegistration)).to.be.lessThan(routes.indexOf(dynamicRouteRegistration))
+      })
+    }
+
     it('omits spec path support from generated routes when no controller uses @SpecPath', () => {
       const generator = new DefaultRouteGenerator(
         {

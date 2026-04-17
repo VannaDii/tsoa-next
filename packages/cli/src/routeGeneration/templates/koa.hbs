@@ -85,8 +85,47 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
     const templateService = new KoaTemplateService(models, additionalProps);
     {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
-    {{/if}}
+    {{#each controllers}}
+    for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
 
+        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
+        if (registeredGetPaths.has(specFullPath)) {
+            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
+        }
+        registeredGetPaths.add(specFullPath);
+
+        router.get(specFullPath,
+            async function {{name}}_specPath(context: Context, next: Next) {
+                try {
+                    const specResponse = await resolveSpecPathResponse({
+                        controllerClass: {{name}},
+                        fullPath: specFullPath,
+                        request: context.request,
+                        response: context.response,
+                        runtime: 'koa',
+                        specGenerator,
+                        specPath,
+                    });
+
+                    if (specResponse.contentType) {
+                        context.type = specResponse.contentType;
+                    }
+
+                    context.status = 200;
+                    context.body = specResponse.body;
+                    return;
+                } catch (err) {
+                    const error = err as any;
+                    context.status = error.status || 500;
+                    context.throw(context.status, error.message, error);
+                }
+            });
+    }
+    {{/each}}
+    {{/if}}
     {{#each controllers}}
     {{#each actions}}
         const args{{../name}}_{{name}}: Record<string, TsoaRoute.ParameterSchema> = {
@@ -146,48 +185,6 @@ export function RegisterRoutes(router: KoaRouter,opts?:{validation?: Tsoa.Valida
         });
     {{/each}}
     {{/each}}
-    {{#if useSpecPaths}}
-    {{#each controllers}}
-    for (const specPath of fetchSpecPaths({{name}})) {
-        if (specPath.gate === false) {
-            continue;
-        }
-
-        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
-        if (registeredGetPaths.has(specFullPath)) {
-            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
-        }
-        registeredGetPaths.add(specFullPath);
-
-        router.get(specFullPath,
-            async function {{name}}_specPath(context: Context, next: Next) {
-                try {
-                    const specResponse = await resolveSpecPathResponse({
-                        controllerClass: {{name}},
-                        fullPath: specFullPath,
-                        request: context.request,
-                        response: context.response,
-                        runtime: 'koa',
-                        specGenerator,
-                        specPath,
-                    });
-
-                    if (specResponse.contentType) {
-                        context.type = specResponse.contentType;
-                    }
-
-                    context.status = 200;
-                    context.body = specResponse.body;
-                    return;
-                } catch (err) {
-                    const error = err as any;
-                    context.status = error.status || 500;
-                    context.throw(context.status, error.message, error);
-                }
-            });
-    }
-    {{/each}}
-    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

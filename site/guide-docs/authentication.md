@@ -1,6 +1,8 @@
 # Authentication
 
 Authentication is done using a middleware handler along with `@Security('name', ['scopes'])` decorator in your controller.
+The scheme name is user-defined: `jwt`, `api_key`, `session`, or `tsoa_auth` are all valid as long as you use the same name in `spec.securityDefinitions`, `@Security(...)`, and your authentication module.
+Relevant API reference: [`@Security`](../reference/tsoa-next/functions/Security.md), [`@NoSecurity`](../reference/tsoa-next/functions/NoSecurity.md), [`@Request`](../reference/tsoa-next/functions/Request.md), [`@Res`](../reference/tsoa-next/functions/Res.md), [`@Response`](../reference/tsoa-next/functions/Response.md), and [`TsoaResponse`](../reference/tsoa-next/type-aliases/TsoaResponse.md).
 
 First, define the security definitions for OpenAPI, and also configure where the authentication middleware handler is. In this case, it is in the `authentication.ts` file.
 
@@ -13,7 +15,7 @@ First, define the security definitions for OpenAPI, and also configure where the
             "name": "access_token",
             "in": "query"
         },
-        "tsoa_auth": {
+        "jwt": {
             "type": "oauth2",
             "authorizationUrl": "http://swagger.io/api/oauth/dialog",
             "flow": "implicit",
@@ -32,9 +34,9 @@ First, define the security definitions for OpenAPI, and also configure where the
 }
 ```
 
-In the middleware, export the function based on which library (Express, Koa, Hapi) you are using. You only create 1 function to handle all authenticate types. The `securityName` and `scopes` come from the annotation you put above your controller function.
+In the middleware, export the function based on which library (Express, Koa, Hapi) you are using. You only create one function per runtime and handle the security types inside it. The `securityName` and `scopes` come from the annotation you put above your controller function.
 
-\* *securityDefinitions* name and *securityName* name should be the same
+\* The `securityDefinitions` key and the `securityName` you check in your authentication module must match exactly. `tsoa-next` does not reserve or special-case any particular name.
 
 `./authentication.ts`
 
@@ -78,7 +80,7 @@ export function expressAuthentication(
           reject(err);
         } else {
           // Check if JWT contains all required scopes
-          for (let scope of scopes) {
+          for (const scope of scopes ?? []) {
             if (!decoded.scopes.includes(scope)) {
               reject(new Error("JWT does not contain required scope."));
             }
@@ -112,21 +114,41 @@ export function koaAuthentication(
 `./controllers/securityController.ts`
 
 ```ts
-import { Get, Route, Security, Response } from "tsoa-next";
+import { Get, Request, Res, Response, Route, Security, TsoaResponse } from "tsoa-next";
 
 @Route("secure")
 export class SecureController {
-  @Response<ErrorResponseModel>("Unexpected error")
+  @Response<{ message: string }>("default", "Unexpected error")
   @Security("api_key")
   @Get("UserInfo")
-  public async userInfo(@Request() request: any): Promise<UserResponseModel> {
+  public async userInfo(@Request() request: { user: { id: number; name: string } }): Promise<{ id: number; name: string }> {
     return Promise.resolve(request.user);
   }
 
+  @Response<{ message: string }>("default", "Unexpected error")
   @Security("jwt", ["admin"])
   @Get("EditUser")
-  public async userInfo(@Request() request: any): Promise<string> {
-    // Do something here
+  public async editUser(
+    @Request() request: { user?: { id: number; name: string } },
+    @Res() notFoundResponse: TsoaResponse<404, { message: string }>
+  ): Promise<{ id: number; name: string }> {
+    if (!request.user) {
+      return notFoundResponse(404, { message: "Not found" });
+    }
+
+    return request.user;
+  }
+}
+```
+
+## Default API-wide security
+
+If most of your API shares the same requirement, you can apply it once at the spec level with `spec.rootSecurity` and then override it on individual controllers or actions with `@Security(...)` or `@NoSecurity()`.
+
+```js
+{
+  "spec": {
+    "rootSecurity": [{ "api_key": [] }]
   }
 }
 ```

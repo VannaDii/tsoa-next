@@ -516,7 +516,7 @@ export class TypeResolver {
       return false
     }
 
-    return isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
+    return isExistJSDocTag(parent, tag => tag.tagName.text === 'deprecated') || isDecorator(parent, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
   }
 
   private getMappedPropertyDefault(parent: ts.Declaration | undefined): unknown {
@@ -1264,7 +1264,7 @@ export class TypeResolver {
 
   private calcMemberJsDocProperties(arg: ts.PropertySignature): string {
     const def = TypeResolver.getDefault(arg)
-    const isDeprecated = isExistJSDocTag(arg, tag => tag.tagName.text === 'deprecated') || isDecorator(arg, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
+    const isDeprecated = isExistJSDocTag(arg, tag => tag.tagName.text === 'deprecated') || isDecorator(arg, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
 
     const symbol = this.getSymbolAtLocation(arg.name as ts.Node)
     const comments = symbol ? symbol.getDocumentationComment(this.current.typeChecker) : []
@@ -1554,7 +1554,7 @@ export class TypeResolver {
     const example = this.getNodeExample(modelType)
     const description = this.getNodeDescription(modelType)
     const deprecated =
-      isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (_identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
+      isExistJSDocTag(modelType, tag => tag.tagName.text === 'deprecated') || isDecorator(modelType, (identifier, canonicalName) => canonicalName === 'Deprecated', this.current.typeChecker)
     const title = this.getNodeTitle(modelType)
 
     // Handle toJSON methods
@@ -2033,7 +2033,7 @@ export class TypeResolver {
       return safeFromJson(exampleJSDoc)
     }
 
-    return getNodeFirstDecoratorValue(node, this.current.typeChecker, (_dec, canonicalName) => canonicalName === 'Example')
+    return getNodeFirstDecoratorValue(node, this.current.typeChecker, (dec, canonicalName) => canonicalName === 'Example')
   }
 
   public getNodeExtension(node: ts.Node) {
@@ -2047,7 +2047,7 @@ export class TypeResolver {
   }
 
   private getDecoratorsByIdentifier(node: ts.Node, id: string) {
-    return getDecorators(node, (_identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
+    return getDecorators(node, (identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
   }
 
   public static getDefault(node: ts.Node): unknown {

@@ -1,10 +1,10 @@
 /**
  * Adds an OpenAPI specification extension to a model property.
  *
- * @param _name The extension key, typically beginning with `x-`.
- * @param _value The extension value.
+ * @param name The extension key, typically beginning with `x-`.
+ * @param value The extension value.
  */
-export function Extension(_name: string, _value: ExtensionType | ExtensionType[]): PropertyDecorator {
+export function Extension(name: string, value: ExtensionType | ExtensionType[]): PropertyDecorator {
   return () => {
     return
   }

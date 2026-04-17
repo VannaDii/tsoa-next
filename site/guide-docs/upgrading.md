@@ -254,6 +254,6 @@ EntryFile and noImplicitAdditionalProperties can now be set on the swagger/route
 Also, boolean settings for noImplicitAdditionalProperties have been removed: #503
 Valid settings are now: `'throw-on-extras' | 'silently-remove-extras' | 'ignore'`, everything else falls back to `'ignore'`.
 
-**For reference, see the TS interface of the entire config [here](../reference/interfaces/tsoa-next.Config.html)**
+**For reference, see the TS interface of the entire config [here](../reference/tsoa-next/interfaces/Config.md)**
 
 ### TypeScript Unions are now implemented as `anyOf` in OpenAPI [\#671](https://github.com/tsoa-next/tsoa-next/issues/671)

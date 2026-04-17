@@ -1,5 +1,7 @@
 # Examples
 
+Relevant API reference: [`@Example`](../reference/tsoa-next/functions/Example.md), [`@Response`](../reference/tsoa-next/functions/Response.md), [`@SuccessResponse`](../reference/tsoa-next/functions/SuccessResponse.md), and [`Controller`](../reference/tsoa-next/classes/Controller.md).
+
 ## Runnable example apps
 
 For end-to-end sample apps and framework-specific setups, use the companion [tsoa-next/playground](https://github.com/tsoa-next/playground) repository.
@@ -31,7 +33,7 @@ OpenAPI 3 examples is now supported!
 
 ## Response examples
 
-In order to provide an example response, tsoa offers a [`@Example()`](../reference/functions/tsoa-next.Example.html) Decorator.
+In order to provide an example response, tsoa offers a [`@Example()`](../reference/tsoa-next/functions/Example.md) Decorator.
 
 ::: tip
 Providing the type you're writing the example for as a type argument `T` to
@@ -44,7 +46,7 @@ is not necessary, but may help you catch bugs.
 :::
 
 This decorator is used to specify a response for the default response,
-but you can add examples for other responses ([`@Response()`](../reference/functions/tsoa-next.Response.html), used for additional responses, often caused by [errors](./error-handling#specifying-error-response-types-for-openapi) by providing them as the third argument as well.
+but you can add examples for other responses ([`@Response()`](../reference/tsoa-next/functions/Response.md), used for additional responses, often caused by [errors](./error-handling#specifying-error-response-types-for-openapi) by providing them as the third argument as well.
 
 ### Default response
 

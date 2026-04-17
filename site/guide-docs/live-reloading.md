@@ -8,9 +8,11 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using `npm`, `yarn` should work but was not tested.
+Examples below include `npm`, `pnpm`, and `yarn` variants where the command differs.
 We assume your setup is similar to the one recommended for [getting started](/getting-started)
 :::
+
+Relevant API reference: [`@SpecPath`](../reference/tsoa-next/functions/SpecPath.md), [`SpecPathOptions`](../reference/tsoa-next/interfaces/SpecPathOptions.md), [`SpecRequestContext`](../reference/tsoa-next/interfaces/SpecRequestContext.md), and [`SpecCacheHandler`](../reference/tsoa-next/interfaces/SpecCacheHandler.md).
 
 ::: tip
 We will use [nodemon](https://nodemon.io/) and [ts-node](https://github.com/TypeStrong/ts-node) for live reloading, but any tool that allows us to hook into the reloading process will do. Alternatives may, i.e. be a combination of `tsc -w` and triggering `tsoa spec-and-routes` using [`onchange`](https://www.npmjs.com/package/onchange).
@@ -24,9 +26,21 @@ We will use [nodemon](https://nodemon.io/) and [ts-node](https://github.com/Type
 
 ### Installing nodemon and ts-node
 
-```bash
+::: code-group
+
+```bash [npm]
 npm i -D nodemon ts-node concurrently
 ```
+
+```bash [pnpm]
+pnpm add -D nodemon ts-node concurrently
+```
+
+```bash [yarn]
+yarn add -D nodemon ts-node concurrently
+```
+
+:::
 
 ### Creating a nodemon config
 
@@ -42,7 +56,7 @@ Now, let's create a `nodemon.json` inside the root folder of our project that lo
 
 ### Adding a dev script
 
-Let's automatically start this setup with `npm run dev`, and, while we're at it, a `build` and a `start` command in our `package.json`:
+Let's automatically start this setup with your package manager's `dev` script (`npm run dev`, `pnpm dev`, or `yarn dev`), and, while we're at it, add `build` and `start` commands in our `package.json`:
 
 ```diff
 {
@@ -60,18 +74,18 @@ Let's automatically start this setup with `npm run dev`, and, while we're at it,
 
 ## Supercharging our developer experience with `@SpecPath`
 
-`@SpecPath(...)` lets a controller expose a live spec or docs endpoint without reading `swagger.json` or `openapi.yaml` from disk at request time.
+[`@SpecPath(...)`](../reference/tsoa-next/functions/SpecPath.md) lets a controller expose a live spec or docs endpoint without reading `swagger.json` or `openapi.yaml` from disk at request time.
 That makes it a good fit for development workflows where you want the generated documentation to stay in sync with the same controller metadata your routes already use.
 
 ### Installing a docs UI peer
 
 Pick the docs UI target you want to use:
 
-- Express: `npm i swagger-ui-express`
-- Koa: `npm i swagger-ui-koa`
-- Hapi: `npm i hapi-swagger`
-- Redoc: `npm i redoc`
-- RapiDoc: `npm i rapidoc`
+- Express: `npm i swagger-ui-express` / `pnpm add swagger-ui-express` / `yarn add swagger-ui-express`
+- Koa: `npm i swagger-ui-koa` / `pnpm add swagger-ui-koa` / `yarn add swagger-ui-koa`
+- Hapi: `npm i hapi-swagger` / `pnpm add hapi-swagger` / `yarn add hapi-swagger`
+- Redoc: `npm i redoc` / `pnpm add redoc` / `yarn add redoc`
+- RapiDoc: `npm i rapidoc` / `pnpm add rapidoc` / `yarn add rapidoc`
 
 ### Exposing a controller-scoped docs endpoint
 

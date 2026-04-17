@@ -5,14 +5,15 @@ lang: en-US
 
 # External validators with `@Validate`
 
-The new external schema decorator is `@Validate(...)`.
+The new external schema decorator is [`@Validate(...)`](../reference/tsoa-next/functions/Validate.md).
 If you are looking for `@Validator`, the decorator name in `tsoa-next` is `@Validate`.
+Relevant API reference: [`@Validate`](../reference/tsoa-next/functions/Validate.md), [`@Body`](../reference/tsoa-next/functions/Body.md), [`@BodyProp`](../reference/tsoa-next/functions/BodyProp.md), [`@Query`](../reference/tsoa-next/functions/Query.md), [`@Queries`](../reference/tsoa-next/functions/Queries.md), [`@Path`](../reference/tsoa-next/functions/Path.md), [`@Header`](../reference/tsoa-next/functions/Header.md), [`@FormField`](../reference/tsoa-next/functions/FormField.md), [`@UploadedFile`](../reference/tsoa-next/functions/UploadedFile.md), [`@UploadedFiles`](../reference/tsoa-next/functions/UploadedFiles.md), and [`File`](../reference/tsoa-next/interfaces/File.md).
 
 [[toc]]
 
 ## What `@Validate` changes
 
-`@Validate(...)` makes an external schema the runtime source of truth for one decorated parameter.
+[`@Validate(...)`](../reference/tsoa-next/functions/Validate.md) makes an external schema the runtime source of truth for one decorated parameter.
 
 - TypeScript types still drive OpenAPI generation
 - The external schema replaces built-in runtime validation for the decorated parameter subtree
@@ -22,15 +23,15 @@ If you are looking for `@Validator`, the decorator name in `tsoa-next` is `@Vali
 
 In this release, `@Validate(...)` is supported on controller method parameters that use:
 
-- `@Body()`
-- `@BodyProp()`
-- `@Query()`
-- `@Queries()`
-- `@Path()`
-- `@Header()`
-- `@FormField()`
-- `@UploadedFile()`
-- `@UploadedFiles()`
+- [`@Body()`](../reference/tsoa-next/functions/Body.md)
+- [`@BodyProp()`](../reference/tsoa-next/functions/BodyProp.md)
+- [`@Query()`](../reference/tsoa-next/functions/Query.md)
+- [`@Queries()`](../reference/tsoa-next/functions/Queries.md)
+- [`@Path()`](../reference/tsoa-next/functions/Path.md)
+- [`@Header()`](../reference/tsoa-next/functions/Header.md)
+- [`@FormField()`](../reference/tsoa-next/functions/FormField.md)
+- [`@UploadedFile()`](../reference/tsoa-next/functions/UploadedFile.md)
+- [`@UploadedFiles()`](../reference/tsoa-next/functions/UploadedFiles.md)
 
 ## Supported libraries
 
@@ -42,13 +43,33 @@ In this release, `@Validate(...)` is supported on controller method parameters t
 
 Install only the validator library your application uses.
 
-```bash
+::: code-group
+
+```bash [npm]
 npm install zod
 npm install joi
 npm install yup
 npm install superstruct
 npm install io-ts fp-ts io-ts-types
 ```
+
+```bash [pnpm]
+pnpm add zod
+pnpm add joi
+pnpm add yup
+pnpm add superstruct
+pnpm add io-ts fp-ts io-ts-types
+```
+
+```bash [yarn]
+yarn add zod
+yarn add joi
+yarn add yup
+yarn add superstruct
+yarn add io-ts fp-ts io-ts-types
+```
+
+:::
 
 ## Supported decorator forms
 

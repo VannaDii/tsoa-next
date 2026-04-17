@@ -24,7 +24,7 @@ function isExternalValidatorKind(value: unknown): value is Tsoa.ExternalValidato
 }
 
 function getValidateDecorator(parameter: ts.ParameterDeclaration, typeChecker: ts.TypeChecker): ts.Decorator | undefined {
-  const decorators = getDecorators(parameter, (_identifier, canonicalName) => canonicalName === 'Validate', typeChecker)
+  const decorators = getDecorators(parameter, (identifier, canonicalName) => canonicalName === 'Validate', typeChecker)
   if (decorators.length > 1) {
     throw new GenerateMetadataError('Only one @Validate decorator is allowed per parameter.', parameter)
   }
@@ -59,11 +59,7 @@ function getSymbolDeclarations(symbol: ts.Symbol): ts.Declaration[] {
   return symbol.declarations || (symbol.valueDeclaration ? [symbol.valueDeclaration] : [])
 }
 
-function inferValidatorKindFromDeclaration(
-  declaration: ts.Declaration,
-  typeChecker: ts.TypeChecker,
-  visited: Set<ts.Symbol>,
-): Tsoa.ExternalValidatorKind | undefined {
+function inferValidatorKindFromDeclaration(declaration: ts.Declaration, typeChecker: ts.TypeChecker, visited: Set<ts.Symbol>): Tsoa.ExternalValidatorKind | undefined {
   const fromImport = getModuleKindFromImportDeclaration(declaration)
   if (fromImport) {
     return fromImport
@@ -78,11 +74,7 @@ function inferValidatorKindFromDeclaration(
   return undefined
 }
 
-function inferValidatorKindFromDeclarations(
-  declarations: ts.Declaration[],
-  typeChecker: ts.TypeChecker,
-  visited: Set<ts.Symbol>,
-): Tsoa.ExternalValidatorKind | undefined {
+function inferValidatorKindFromDeclarations(declarations: ts.Declaration[], typeChecker: ts.TypeChecker, visited: Set<ts.Symbol>): Tsoa.ExternalValidatorKind | undefined {
   for (const declaration of declarations) {
     const inferredKind = inferValidatorKindFromDeclaration(declaration, typeChecker, visited)
     if (inferredKind) {
@@ -147,11 +139,7 @@ function inferValidatorKindFromExpression(expression: ts.Expression, typeChecker
   return undefined
 }
 
-function parseValidateKindAndSchemaArgument(
-  expression: ts.CallExpression,
-  parameter: ts.ParameterDeclaration,
-  typeChecker: ts.TypeChecker,
-): Tsoa.ExternalValidatorDescriptor {
+function parseValidateKindAndSchemaArgument(expression: ts.CallExpression, parameter: ts.ParameterDeclaration, typeChecker: ts.TypeChecker): Tsoa.ExternalValidatorDescriptor {
   const args = [...expression.arguments]
   if (args.length === 0) {
     throw new GenerateMetadataError('@Validate requires a schema argument.', parameter)
@@ -204,26 +192,17 @@ function parseValidateKindAndSchemaArgument(
 }
 
 function getValidateKindProperty(objectLiteral: ts.ObjectLiteralExpression): ts.PropertyAssignment | undefined {
-  return objectLiteral.properties.find(
-    (property): property is ts.PropertyAssignment =>
-      ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'kind',
-  )
+  return objectLiteral.properties.find((property): property is ts.PropertyAssignment => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === 'kind')
 }
 
 function getValidateSchemaProperty(objectLiteral: ts.ObjectLiteralExpression): ValidateSchemaProperty | undefined {
   return objectLiteral.properties.find(
     (property): property is ValidateSchemaProperty =>
-      (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) &&
-      ts.isIdentifier(property.name) &&
-      property.name.text === 'schema',
+      (ts.isPropertyAssignment(property) || ts.isShorthandPropertyAssignment(property)) && ts.isIdentifier(property.name) && property.name.text === 'schema',
   )
 }
 
-export function getParameterExternalValidator(
-  parameter: ts.ParameterDeclaration,
-  parameterIn: Tsoa.Parameter['in'],
-  typeChecker: ts.TypeChecker,
-): ValidateDecoratorParseResult | undefined {
+export function getParameterExternalValidator(parameter: ts.ParameterDeclaration, parameterIn: Tsoa.Parameter['in'], typeChecker: ts.TypeChecker): ValidateDecoratorParseResult | undefined {
   const decorator = getValidateDecorator(parameter, typeChecker)
   if (!decorator) {
     return undefined
@@ -245,7 +224,7 @@ export function getParameterExternalValidator(
 
 export function assertValidateDecoratorTargets(program: ts.Program, typeChecker: ts.TypeChecker) {
   const visit = (node: ts.Node) => {
-    const validateDecorators = getDecorators(node, (_identifier, canonicalName) => canonicalName === 'Validate', typeChecker)
+    const validateDecorators = getDecorators(node, (identifier, canonicalName) => canonicalName === 'Validate', typeChecker)
 
     if (validateDecorators.length > 0) {
       if (!ts.isParameter(node)) {

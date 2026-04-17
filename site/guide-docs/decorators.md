@@ -1,14 +1,15 @@
 # Decorators
 
-Please note that this Section only covers Decorators that are not described separately, such as [`@Response`](./error-handling) or [`@Parameters`](./getting-started).
+Please note that this section only covers decorators that are not described separately, such as [`@Response`](./error-handling) or the core parameter decorators introduced in [Getting started](./getting-started).
 For a full overview, please check out the [API Reference](../reference/).
+Relevant API reference: [`@Security`](../reference/tsoa-next/functions/Security.md), [`@NoSecurity`](../reference/tsoa-next/functions/NoSecurity.md), [`@Tags`](../reference/tsoa-next/functions/Tags.md), [`@OperationId`](../reference/tsoa-next/functions/OperationId.md), [`@Deprecated`](../reference/tsoa-next/functions/Deprecated.md), [`@Validate`](../reference/tsoa-next/functions/Validate.md), [`@SpecPath`](../reference/tsoa-next/functions/SpecPath.md), [`@Hidden`](../reference/tsoa-next/functions/Hidden.md), [`@Request`](../reference/tsoa-next/functions/Request.md), [`@RequestProp`](../reference/tsoa-next/functions/RequestProp.md), [`@Inject`](../reference/tsoa-next/functions/Inject.md), [`@Produces`](../reference/tsoa-next/functions/Produces.md), and [`@Consumes`](../reference/tsoa-next/functions/Consumes.md).
 
 ## Security
 
-The `@Security` decorator can be used above controller methods to indicate that there should be authentication before running those methods. As described above, the authentication is done in a file that's referenced in tsoa's configuration. When using the `@Security` decorator, you can choose between having one or multiple authentication methods. If you choose to have multiple authentication methods, you can choose between having to pass one of the methods (OR):
+The [`@Security`](../reference/tsoa-next/functions/Security.md) decorator can be used above controller methods to indicate that there should be authentication before running those methods. As described above, the authentication is done in a file that's referenced in tsoa's configuration. The scheme names are user-defined and must match the names in your OpenAPI security config and authentication module. When using the `@Security` decorator, you can choose between having one or multiple authentication methods. If you choose to have multiple authentication methods, you can choose between having to pass one of the methods (OR):
 
 ```ts
-@Security('tsoa_auth', ['write:pets', 'read:pets'])
+@Security('jwt', ['write:pets', 'read:pets'])
 @Security('api_key')
 @Get('OauthOrAPIkey')
 public async GetWithOrSecurity(@Request() request: express.Request): Promise<any> {
@@ -19,7 +20,7 @@ or having to pass all of them (AND):
 
 ```ts
 @Security({
-  tsoa_auth: ['write:pets', 'read:pets'],
+  jwt: ['write:pets', 'read:pets'],
   api_key: [],
 })
 @Get('OauthAndAPIkey')
@@ -27,27 +28,50 @@ public async GetWithAndSecurity(@Request() request: express.Request): Promise<an
 }
 ```
 
-## Tags
+## NoSecurity
 
-Tags are defined with the `@Tags('tag1', 'tag2', ...)` decorator in the controllers and/or in the methods like in the following examples.
+Use [`@NoSecurity()`](../reference/tsoa-next/functions/NoSecurity.md) when a controller or action should clear inherited or API-wide security requirements.
 
 ```ts
-import { Get, Route, Response, Tags } from "tsoa-next";
+import { Controller, Get, NoSecurity, Route, Security } from 'tsoa-next'
 
-@Route("users")
-@Tags("User")
-export class UsersController {
-  @Response<ErrorResponseModel>("Unexpected error")
-  @Get("UserInfo")
-  @Tags("Info", "Get")
-  public async userInfo(@Request() request: any): Promise<UserResponseModel> {
-    return Promise.resolve(request.user);
+@Route('users')
+@Security('api_key')
+export class UsersController extends Controller {
+  @Get('private')
+  public async privateEndpoint(): Promise<string> {
+    return 'private'
   }
 
-  @Get("EditUser")
-  @Tags("Edit")
-  public async userInfo(@Request() request: any): Promise<string> {
-    // Do something here
+  @Get('public')
+  @NoSecurity()
+  public async publicEndpoint(): Promise<string> {
+    return 'public'
+  }
+}
+```
+
+## Tags
+
+Tags are defined with the [`@Tags('tag1', 'tag2', ...)`](../reference/tsoa-next/functions/Tags.md) decorator in the controllers and/or in the methods like in the following examples.
+
+```ts
+import { Controller, Get, Request, Response, Route, Tags } from 'tsoa-next'
+
+@Route('users')
+@Tags('User')
+export class UsersController extends Controller {
+  @Get('UserInfo')
+  @Tags('Info', 'Get')
+  @Response<{ message: string }>('default', 'Unexpected error')
+  public async userInfo(@Request() request: { user: { id: number; name: string } }): Promise<{ id: number; name: string }> {
+    return Promise.resolve(request.user)
+  }
+
+  @Get('EditUser')
+  @Tags('Edit')
+  public async editUser(): Promise<string> {
+    return 'ok'
   }
 }
 ```
@@ -77,7 +101,7 @@ If you have a project that needs a description and/or external docs for tags, yo
 
 ## OperationId
 
-Set operationId parameter under operation's path.
+Set [`operationId`](../reference/tsoa-next/functions/OperationId.md) under an operation's path.
 Useful for use with OpenAPI code generation tool since this parameter is used to name the function generated in the client SDK.
 
 ```ts
@@ -92,7 +116,7 @@ public async find(): Promise<any> {
 
 OpenAPI allows you to deprecate [operations](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#user-content-operationdeprecated), [parameters](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#user-content-parameterdeprecated), and [schemas](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.2.md#user-content-schemadeprecated). This lets you indicate that certain endpoint/formats/etc. should no longer be used, while allowing clients time to migrate to the new approach.
 
-To deprecate parts of your API, you can attach the `@Deprecated` decorator to class properties, methods, and parameters. For constructs that don't support decorators (e.g. interfaces and type aliases), you can use a `@deprecated` JSDoc annotation. Some examples:
+To deprecate parts of your API, you can attach the [`@Deprecated`](../reference/tsoa-next/functions/Deprecated.md) decorator to class properties, methods, and parameters. For constructs that don't support decorators (e.g. interfaces and type aliases), you can use a `@deprecated` JSDoc annotation. Some examples:
 
 ### Operations
 
@@ -157,7 +181,7 @@ type UserDetails = {
 
 ## Validate
 
-The external schema decorator is named `@Validate(...)`.
+The external schema decorator is named [`@Validate(...)`](../reference/tsoa-next/functions/Validate.md).
 Use it on controller method parameters when you want a supported external schema library to replace built-in runtime validation for that parameter subtree.
 
 - Supported forms: `@Validate(schema)`, `@Validate('zod', schema)`, `@Validate({ kind: 'zod', schema })`
@@ -192,7 +216,7 @@ For complete setup notes and examples for every supported validator library, see
 
 ## SpecPath
 
-Use `@SpecPath(...)` on a controller when you want that controller to expose a spec or documentation endpoint at runtime without reading a generated spec file from local disk.
+Use [`@SpecPath(...)`](../reference/tsoa-next/functions/SpecPath.md) on a controller when you want that controller to expose a spec or documentation endpoint at runtime without reading a generated spec file from local disk.
 
 - `@SpecPath()` defaults to a JSON endpoint at `/<controller-path>/spec`
 - Built-in targets: `json`, `yaml`, `swagger`, `redoc`, `rapidoc`
@@ -205,9 +229,9 @@ Use `@SpecPath(...)` on a controller when you want that controller to expose a s
   - `redoc` for Redoc
   - `rapidoc` for RapiDoc
 - Custom handlers can return either a `string` or a `Readable`
-- Use `@SpecPath(path, options?)` to configure `target`, `cache`, and an optional `gate`
-- `gate` can be a boolean or a function that receives the `SpecRequestContext` and returns whether the spec should be served for that request
-- Cache can be disabled with `'none'`, kept in-process with `'memory'`, or delegated to a custom cache handler
+- Use `@SpecPath(path, options?)` to configure [`SpecPathOptions`](../reference/tsoa-next/interfaces/SpecPathOptions.md) such as `target`, `cache`, and an optional `gate`
+- `gate` can be a boolean or a function that receives the [`SpecRequestContext`](../reference/tsoa-next/interfaces/SpecRequestContext.md) and returns whether the spec should be served for that request
+- Cache can be disabled with `'none'`, kept in-process with `'memory'`, or delegated to a custom [`SpecCacheHandler`](../reference/tsoa-next/interfaces/SpecCacheHandler.md)
 - `@SpecPath(...)` routes are auxiliary and are not added to the generated OpenAPI document
 
 ```ts
@@ -279,21 +303,23 @@ When caching is enabled and a custom handler returns a stream, `tsoa-next` buffe
 
 ## Hidden
 
-Use on methods to exclude an endpoint from the generated OpenAPI Specification document.
+Use [`@Hidden`](../reference/tsoa-next/functions/Hidden.md) on methods to exclude an endpoint from the generated OpenAPI Specification document.
 
 ```ts
-  @Get()
-  @Hidden()
-  public async find(): Promise<any> {
-
-  }
+@Get()
+@Hidden()
+public async find(): Promise<any> {
+}
 ```
 
-Use on controllers to exclude all of its endpoints from the generated OpenAPI Specification document.
+Use [`@Hidden`](../reference/tsoa-next/functions/Hidden.md) on controllers to exclude all of their endpoints from the generated OpenAPI Specification document.
 
 ```ts
+import { Controller, Get, Hidden, Post, Route } from 'tsoa-next'
+
+@Route('hidden')
 @Hidden()
-export class HiddenController {
+export class HiddenController extends Controller {
   @Get()
   public async find(): Promise<any> {}
 
@@ -317,57 +343,78 @@ Use on `@Query` parameters to exclude query params from the generated OpenAPI Sp
 
 ## Request
 
-To access the request object of express in a controller method use the `@Request`-decorator:
+To access the request object of express in a controller method use the [`@Request`](../reference/tsoa-next/functions/Request.md) decorator:
 
 ```typescript
 // src/users/usersController.ts
 
-import * as express from "express";
-import { Get, Route, Request } from "tsoa-next";
-import { User, UserCreationRequest } from "../models/user";
+import * as express from 'express'
+import { Controller, Get, Path, Request, Route } from 'tsoa-next'
 
-@Route("users")
-export class UsersController {
-  @Get("{userId}")
+@Route('users')
+export class UsersController extends Controller {
+  @Get('{userId}')
   public async getUser(
-    userId: number,
+    @Path() userId: number,
     @Request() request: express.Request
-  ): Promise<User> {
+  ): Promise<{ id: number; requestedBy?: string }> {
     // TODO: implement some code that uses the request as well
+    return {
+      id: userId,
+      requestedBy: request.header('x-requested-by'),
+    }
   }
 }
 ```
-To access Koa's request object (which has the ctx object) in a controller method use the `@Request`-decorator:
+To access Koa's request object (which has the ctx object) in a controller method use the [`@Request`](../reference/tsoa-next/functions/Request.md) decorator:
 
 ```typescript
 // src/users/usersController.ts
 
-import * as koa from "koa";
-import { Get, Route, Request } from "tsoa-next";
-import { User, UserCreationRequest } from "../models/user";
+import * as koa from 'koa'
+import { Controller, Get, Path, Request, Route } from 'tsoa-next'
 
-@Route("users")
-export class UsersController {
-  @Get("{userId}")
+@Route('users')
+export class UsersController extends Controller {
+  @Get('{userId}')
   public async getUser(
-    userrId: number,
+    @Path() userId: number,
     @Request() request: koa.Request
-  ): Promise<User> {
+  ): Promise<{ id: number; path: string }> {
     const ctx = request.ctx;
-    // TODO: implement some code that uses the request as well
+    return {
+      id: userId,
+      path: ctx.path,
+    }
   }
 }
 ```
 
 ::: danger
 Note that the parameter `request` does not appear in your OAS file.
-Likewise you can use the decorator `@Inject` to mark a parameter as being injected manually and should be omitted in Spec generation.
-In this case you should write your own custom template where you inject the needed objects/values in the method-call.
+Use [`@RequestProp(...)`](../reference/tsoa-next/functions/RequestProp.md) when the value already lives on the underlying runtime request object.
+Use [`@Inject()`](../reference/tsoa-next/functions/Inject.md) when a parameter is supplied entirely by your own route template or wrapper code and should be omitted from spec generation.
 :::
+
+## RequestProp
+
+[`@RequestProp(...)`](../reference/tsoa-next/functions/RequestProp.md) binds a single property from the underlying runtime request object.
+
+```ts
+import { Controller, Post, RequestProp, Route } from 'tsoa-next'
+
+@Route('request-props')
+export class RequestPropsController extends Controller {
+  @Post('body')
+  public async getBody(@RequestProp('body') body: { name: string }): Promise<{ name: string }> {
+    return body
+  }
+}
+```
 
 ## Produces
 
-The `@Produces` decorator is used to define custom media types for the responses of controller methods in the OpenAPI generator. It allows you to specify a specific media type for each method, without overwriting the default Content-Type response.
+The [`@Produces`](../reference/tsoa-next/functions/Produces.md) decorator is used to define custom media types for the responses of controller methods in the OpenAPI generator. It allows you to specify a specific media type for each method, without overwriting the default Content-Type response.
 
 Here's an example of how to use the `@Produces` decorator:
 
@@ -376,23 +423,46 @@ Here's an example of how to use the `@Produces` decorator:
 @Produces('application/vnd.mycompany.myapp+json')
 export class MediaTypeTestController extends Controller {
   @Get('users/{userId}')
-  public async getDefaultProduces(@Path() userId: number): Promise<UserResponseModel> {
-    this.setHeader('Content-Type', 'application/vnd.mycompany.myapp+json');
+  public async getDefaultProduces(@Path() userId: number): Promise<{ id: number; name: string }> {
+    this.setHeader('Content-Type', 'application/vnd.mycompany.myapp+json')
     return Promise.resolve({
       id: userId,
       name: 'foo',
-    });
+    })
   }
   @Get('custom/security.txt')
   @Produces('text/plain')
   public async getCustomProduces(): Promise<string> {
-    const securityTxt = 'Contact: mailto: security@example.com\nExpires: 2012-12-12T12:37:00.000Z';
-    this.setHeader('Content-Type', 'text/plain');
-    return securityTxt;
+    const securityTxt = 'Contact: mailto: security@example.com\nExpires: 2012-12-12T12:37:00.000Z'
+    this.setHeader('Content-Type', 'text/plain')
+    return securityTxt
   }
 }
 ```
 
 ::: danger
-Please note that using the `@Produces` decorator only affects the generated OpenAPI Specification. You must also ensure that you send the correct header using `this.setHeader('Content-Type', 'MEDIA_TYPE')` in your controller methods.
+Please note that using [`@Produces`](../reference/tsoa-next/functions/Produces.md) only affects the generated OpenAPI Specification. You must also ensure that you send the correct header using `this.setHeader('Content-Type', 'MEDIA_TYPE')` in your controller methods.
 :::
+
+## Consumes
+
+Use [`@Consumes(...)`](../reference/tsoa-next/functions/Consumes.md) when an action accepts a non-default request body media type.
+
+```ts
+import { Body, Consumes, Controller, Post, Response, Route, SuccessResponse } from 'tsoa-next'
+
+@Route('MediaTypeTest')
+export class MediaTypeTestController extends Controller {
+  @Post('custom')
+  @Consumes('application/vnd.mycompany.myapp.v2+json')
+  @SuccessResponse('202', 'Accepted', 'application/vnd.mycompany.myapp.v2+json')
+  @Response<{ message: string }>('400', 'Bad Request', undefined, 'application/problem+json')
+  public async postCustomConsumes(@Body() body: { name: string }): Promise<{ id: number; name: string }> {
+    this.setStatus(202)
+    return {
+      id: body.name.length,
+      name: body.name,
+    }
+  }
+}
+```

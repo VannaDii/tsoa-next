@@ -182,13 +182,13 @@ export abstract class SpecGenerator {
     }
   }
 
-  protected getSwaggerTypeForReferenceType(_referenceType: Tsoa.ReferenceType): Swagger.BaseSchema {
+  protected getSwaggerTypeForReferenceType(referenceType: Tsoa.ReferenceType): Swagger.BaseSchema {
     return {
       // Don't set additionalProperties value here since it will be set within the $ref's model when that $ref gets created
     }
   }
 
-  protected getSwaggerTypeForVoid(_dataType: 'void' | 'undefined'): Swagger.BaseSchema {
+  protected getSwaggerTypeForVoid(dataType: 'void' | 'undefined'): Swagger.BaseSchema {
     // Described here: https://swagger.io/docs/specification/describing-responses/#empty
     const voidSchema = {
       // isn't allowed to have additionalProperties at all (meaning not a boolean or object)
