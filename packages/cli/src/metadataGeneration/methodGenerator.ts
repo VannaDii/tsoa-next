@@ -215,7 +215,7 @@ export class MethodGenerator {
   }
 
   private processMethodDecorators() {
-    const pathDecorators = getDecorators(this.node, (_identifier, canonicalName) => this.supportsPathMethod(canonicalName), this.current.typeChecker)
+    const pathDecorators = getDecorators(this.node, (identifier, canonicalName) => this.supportsPathMethod(canonicalName), this.current.typeChecker)
 
     if (!pathDecorators?.length) {
       return
@@ -451,7 +451,7 @@ export class MethodGenerator {
   }
 
   private getDecoratorsByIdentifier(node: ts.Node, id: string) {
-    return getDecorators(node, (_identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
+    return getDecorators(node, (identifier, canonicalName) => canonicalName === id, this.current.typeChecker)
   }
 
   private getDecoratorName(decorator: ts.Identifier) {

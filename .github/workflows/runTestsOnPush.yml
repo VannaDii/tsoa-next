@@ -39,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -56,15 +58,12 @@ jobs:
       - name: Verify synchronized READMEs
         run: npm run sync:readmes:check
 
-      - name: Build guides
+      - name: Build guides and API reference
         run: npm run docs:build
         env:
           BASE_URL: /
           SITE_URL: https://tsoa-next.dev
           API_REFERENCE_URL: /reference/
-
-      - name: Build API reference
-        run: npm run typedocs
 
   coverage:
     name: Coverage

@@ -209,7 +209,7 @@ export class ValidationService {
     validators: Pick<IntegerValidator, 'isInt' | 'isLong'> | Pick<FloatValidator, 'isFloat' | 'isDouble'> | undefined,
     defaultMessage: string,
     primaryValidator: 'isInt' | 'isFloat',
-    _secondaryValidator: 'isLong' | 'isDouble',
+    secondaryValidator: 'isLong' | 'isDouble',
   ): string {
     if (primaryValidator === 'isInt') {
       const integerValidators = validators as Pick<IntegerValidator, 'isInt' | 'isLong'> | undefined

@@ -1,6 +1,7 @@
 # Custom Validation with class-validator
 
 Sometimes the built-in tsoa-next validator is not enough for an application-specific workflow. In that case you can attach your own validation middleware, for example with `class-validator`.
+Relevant API reference: [`@Middlewares`](../reference/tsoa-next/functions/Middlewares.md), [`ValidateError`](../reference/tsoa-next/classes/ValidateError.md), [`@Body`](../reference/tsoa-next/functions/Body.md), [`@Post`](../reference/tsoa-next/functions/Post.md), and [`@SuccessResponse`](../reference/tsoa-next/functions/SuccessResponse.md).
 
 This chapter shows a middleware-based `class-validator` approach for Express.
 
@@ -102,4 +103,3 @@ export class PostController extends Controller {
 ```
 
 `class-validator` and `class-transformer` may need `emitDecoratorMetadata` depending on the decorators and transformation features you use. That requirement comes from those libraries, not from `@Middlewares(...)` itself.
-

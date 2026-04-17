@@ -2,6 +2,7 @@
 
 Authentication is done using a middleware handler along with `@Security('name', ['scopes'])` decorator in your controller.
 The scheme name is user-defined: `jwt`, `api_key`, `session`, or `tsoa_auth` are all valid as long as you use the same name in `spec.securityDefinitions`, `@Security(...)`, and your authentication module.
+Relevant API reference: [`@Security`](../reference/tsoa-next/functions/Security.md), [`@NoSecurity`](../reference/tsoa-next/functions/NoSecurity.md), [`@Request`](../reference/tsoa-next/functions/Request.md), [`@Res`](../reference/tsoa-next/functions/Res.md), [`@Response`](../reference/tsoa-next/functions/Response.md), and [`TsoaResponse`](../reference/tsoa-next/type-aliases/TsoaResponse.md).
 
 First, define the security definitions for OpenAPI, and also configure where the authentication middleware handler is. In this case, it is in the `authentication.ts` file.
 

@@ -331,7 +331,7 @@ export class ControllerGenerator {
   }
 
   private getPath() {
-    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Route', this.current.typeChecker)
+    const decorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'Route', this.current.typeChecker)
     if (!decorators?.length) {
       return undefined
     }
@@ -346,7 +346,7 @@ export class ControllerGenerator {
   }
 
   private getCommonResponses(): Tsoa.Response[] {
-    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Response', this.current.typeChecker)
+    const decorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'Response', this.current.typeChecker)
     if (!decorators?.length) {
       return []
     }
@@ -370,7 +370,7 @@ export class ControllerGenerator {
   }
 
   private getTags() {
-    const decorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Tags', this.current.typeChecker)
+    const decorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'Tags', this.current.typeChecker)
     if (!decorators?.length) {
       return undefined
     }
@@ -385,8 +385,8 @@ export class ControllerGenerator {
   }
 
   private getSecurity(): Tsoa.Security[] {
-    const noSecurityDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'NoSecurity', this.current.typeChecker)
-    const securityDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Security', this.current.typeChecker)
+    const noSecurityDecorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'NoSecurity', this.current.typeChecker)
+    const securityDecorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'Security', this.current.typeChecker)
 
     if (noSecurityDecorators?.length && securityDecorators?.length) {
       throw new GenerateMetadataError(`NoSecurity decorator cannot be used in conjunction with Security decorator in '${this.node.name!.text}' class.`)
@@ -404,7 +404,7 @@ export class ControllerGenerator {
   }
 
   private getIsHidden(): boolean {
-    const hiddenDecorators = getDecorators(this.node, (_identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
+    const hiddenDecorators = getDecorators(this.node, (identifier, canonicalName) => canonicalName === 'Hidden', this.current.typeChecker)
     if (!hiddenDecorators?.length) {
       return false
     }
@@ -424,7 +424,7 @@ export class ControllerGenerator {
     let currentClass: ClassDeclaration | undefined = this.node
 
     while (currentClass) {
-      if (getDecorators(currentClass, (_identifier, canonicalName) => canonicalName === 'SpecPath', this.current.typeChecker).length > 0) {
+      if (getDecorators(currentClass, (identifier, canonicalName) => canonicalName === 'SpecPath', this.current.typeChecker).length > 0) {
         return true
       }
 

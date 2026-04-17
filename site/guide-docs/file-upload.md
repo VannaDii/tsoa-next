@@ -1,24 +1,52 @@
 # Uploading files
 
+Relevant API reference: [`File`](../reference/tsoa-next/interfaces/File.md), [`@FormField`](../reference/tsoa-next/functions/FormField.md), [`@UploadedFile`](../reference/tsoa-next/functions/UploadedFile.md), and [`@UploadedFiles`](../reference/tsoa-next/functions/UploadedFiles.md).
+
 ## Install the runtime upload middleware
 
 For Express:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm install multer
 npm install -D @types/multer
 ```
 
+```bash [pnpm]
+pnpm add multer
+pnpm add -D @types/multer
+```
+
+```bash [yarn]
+yarn add multer
+yarn add -D @types/multer
+```
+
+:::
+
 For Koa:
 
-```bash
+::: code-group
+
+```bash [npm]
 npm install @koa/multer
 ```
 
+```bash [pnpm]
+pnpm add @koa/multer
+```
+
+```bash [yarn]
+yarn add @koa/multer
+```
+
+:::
+
 ## Using the `@UploadedFile` / `@UploadedFiles` decorators
 
-The built-in upload decorators use tsoa-next's exported `File` interface.
-Use `@FormField()` for the non-file multipart fields that arrive alongside the upload.
+The built-in upload decorators use tsoa-next's exported [`File`](../reference/tsoa-next/interfaces/File.md) interface.
+Use [`@FormField()`](../reference/tsoa-next/functions/FormField.md) for the non-file multipart fields that arrive alongside the upload.
 
 ```ts
 import { Controller, File, FormField, Post, Route, UploadedFile, UploadedFiles } from 'tsoa-next'

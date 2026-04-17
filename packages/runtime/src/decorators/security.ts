@@ -10,9 +10,9 @@ export function NoSecurity(): ClassDecorator & MethodDecorator {
 /**
  * Declares the security requirement for a controller or action.
  *
- * @param _name The security scheme name, or a full security requirement object.
- * @param _scopes OAuth scopes required by the scheme when `_name` is a string.
+ * @param name The security scheme name, or a full security requirement object.
+ * @param scopes OAuth scopes required by the scheme when `name` is a string.
  */
-export function Security(_name: string | { [name: string]: string[] }, _scopes?: string[]): ClassDecorator & MethodDecorator {
+export function Security(name: string | { [name: string]: string[] }, scopes?: string[]): ClassDecorator & MethodDecorator {
   return createNoopClassMethodDecorator('security')
 }

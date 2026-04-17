@@ -60,14 +60,7 @@ export default defineConfig([
       '@typescript-eslint/no-unsafe-member-access': 'error',
       '@typescript-eslint/no-unsafe-return': 'error',
       '@typescript-eslint/no-unused-expressions': 'error',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          argsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-        },
-      ],
+      '@typescript-eslint/no-unused-vars': 'error',
       semi: ['error', 'never'],
       '@typescript-eslint/triple-slash-reference': [
         'error',
@@ -87,9 +80,25 @@ export default defineConfig([
           '@typescript-eslint/no-unused-vars': [
             'error',
             {
-              argsIgnorePattern: '^_',
-              caughtErrorsIgnorePattern: '^_',
-              varsIgnorePattern: '^_',
+              argsIgnorePattern: '^(name|value|values|kind|description|produces|example|exampleModel|exampleLabel|scopes)$',
+            },
+          ],
+        },
+      },
+      {
+        files: [
+          './packages/cli/src/metadataGeneration/*.ts',
+          './packages/cli/src/metadataGeneration/transformer/*.ts',
+          './packages/cli/src/utils/decoratorUtils.ts',
+          './packages/cli/src/utils/validateDecoratorUtils.ts',
+          './packages/cli/src/swagger/specGenerator.ts',
+          './packages/runtime/src/routeGeneration/templateHelpers.ts',
+        ],
+        rules: {
+          '@typescript-eslint/no-unused-vars': [
+            'error',
+            {
+              argsIgnorePattern: '^(identifier|ident|dec|referenceType|dataType|secondaryValidator)$',
             },
           ],
         },

@@ -1,8 +1,12 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { defineConfig } from 'vitepress'
 import type { DefaultTheme } from 'vitepress'
+import { GitChangelog, GitChangelogMarkdownSection } from '@nolebase/vitepress-plugin-git-changelog/vite'
+import { groupIconMdPlugin, groupIconVitePlugin } from 'vitepress-plugin-group-icons'
+import llmstxt from 'vitepress-plugin-llms'
 
 const siteName = 'tsoa-next'
 const siteDescription =
@@ -15,7 +19,8 @@ const playgroundUrl = 'https://github.com/tsoa-next/playground'
 const npmPackageUrl = 'https://www.npmjs.com/package/tsoa-next'
 const socialImageUrl = new URL('/tsoa-next-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/tsoa-next-logo-590.png', siteHomeUrl).toString()
-const apiReferenceUrl = new URL(process.env.API_REFERENCE_URL || '/reference/', siteHomeUrl).toString()
+const apiReferenceBasePath = normalizeBasePath(process.env.API_REFERENCE_URL || '/reference/')
+const typedocSidebarPath = join(process.cwd(), 'site/guide-docs/reference/typedoc-sidebar.json')
 const referenceLinkPattern = /^(?:\.\.\/|\/)?reference\/(.*)$/
 const pageDescriptionCache = new Map<string, string>()
 const pageDescriptions: Record<string, string> = {
@@ -67,13 +72,35 @@ function stripTrailingSlash(value: string) {
   return value.replace(/\/$/, '')
 }
 
+function normalizeBasePath(value: string) {
+  const trimmed = value.trim()
+  if (trimmed === '' || trimmed === '/') {
+    return '/'
+  }
+
+  return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
+}
+
 function rewriteReferenceLink(href: string) {
   const match = href.match(referenceLinkPattern)
   if (!match) {
     return
   }
 
-  return new URL(match[1], apiReferenceUrl).toString()
+  const rewrittenUrl = new URL(match[1], `https://tsoa-next.dev${apiReferenceBasePath}`)
+  return `${rewrittenUrl.pathname}${rewrittenUrl.search}${rewrittenUrl.hash}`
+}
+
+function getTypedocSidebar(): DefaultTheme.SidebarItem[] {
+  if (!existsSync(typedocSidebarPath)) {
+    return []
+  }
+
+  try {
+    return JSON.parse(readFileSync(typedocSidebarPath, 'utf8')) as DefaultTheme.SidebarItem[]
+  } catch {
+    return []
+  }
 }
 
 function normalizePagePath(relativePath: string) {
@@ -293,7 +320,7 @@ function createStructuredData(relativePath: string, title: string, description: 
   }).replace(/</g, '\\u003c')
 }
 
-const sidebar: DefaultTheme.Sidebar = [
+const guideSidebar: DefaultTheme.SidebarItem[] = [
   { items: [{ text: 'Introduction', link: '/introduction' }] },
   {
     text: 'Guides',
@@ -328,22 +355,19 @@ const sidebar: DefaultTheme.Sidebar = [
   },
 ]
 
+const sidebar: DefaultTheme.Sidebar = {
+  '/reference/': getTypedocSidebar(),
+  '/': guideSidebar,
+}
+
 export default defineConfig({
   title: siteName,
   description: siteDescription,
   base: process.env.BASE_URL || '/',
-  ignoreDeadLinks: [/reference\//],
-  head: [
-    ['link', { rel: 'icon', type: 'image/png', href: '/favicon-96x96.png', sizes: '96x96' }],
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
-    ['link', { rel: 'shortcut icon', href: '/favicon.ico' }],
-    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
-    ['link', { rel: 'manifest', href: '/site.webmanifest' }],
-    ['meta', { name: 'application-name', content: siteName }],
-    ['meta', { name: 'theme-color', content: '#0f1342' }],
-  ],
   markdown: {
     config(md) {
+      groupIconMdPlugin(md)
+
       const defaultLinkOpen =
         md.renderer.rules.link_open ??
         ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options))
@@ -364,6 +388,36 @@ export default defineConfig({
         return defaultLinkOpen(tokens, idx, options, env, self)
       }
     },
+  },
+  head: [
+    ['link', { rel: 'icon', type: 'image/png', href: '/favicon-96x96.png', sizes: '96x96' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    ['link', { rel: 'shortcut icon', href: '/favicon.ico' }],
+    ['link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }],
+    ['link', { rel: 'manifest', href: '/site.webmanifest' }],
+    ['meta', { name: 'application-name', content: siteName }],
+    ['meta', { name: 'theme-color', content: '#0f1342' }],
+  ],
+  vite: {
+    plugins: [
+      llmstxt({
+        domain: siteUrl,
+        sidebar: { '/': guideSidebar },
+        ignoreFilesPerOutput: {
+          llmsTxt: ['reference/**'],
+          llmsFullTxt: ['reference/**'],
+          pages: ['reference/**'],
+        },
+      }),
+      groupIconVitePlugin(),
+      GitChangelog({
+        repoURL: repositoryUrl,
+        include: ['site/guide-docs/**/*.md', '!site/guide-docs/reference/**', '!node_modules'],
+      }),
+      GitChangelogMarkdownSection({
+        exclude: (_id, { helpers }) => helpers.idEquals('index.md') || helpers.idStartsWith('reference/'),
+      }),
+    ],
   },
   sitemap: {
     hostname: siteHomeUrl,
@@ -442,7 +496,7 @@ export default defineConfig({
       },
       {
         text: 'API Reference',
-        link: apiReferenceUrl,
+        link: apiReferenceBasePath,
         noIcon: true,
         target: '_self',
       },
@@ -450,11 +504,8 @@ export default defineConfig({
         text: 'Playground',
         link: playgroundUrl,
       },
-      {
-        text: 'GitHub',
-        link: repositoryUrl,
-      },
     ],
+    socialLinks: [{ icon: 'github', link: repositoryUrl, ariaLabel: 'GitHub' }],
     sidebar,
   },
 })

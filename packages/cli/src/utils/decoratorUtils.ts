@@ -132,7 +132,7 @@ export function getPath(decorator: ts.Identifier, typeChecker: ts.TypeChecker): 
 }
 
 export function getProduces(node: ts.Node, typeChecker: ts.TypeChecker): string[] {
-  const producesDecorators = getDecorators(node, (_identifier, canonicalName) => canonicalName === 'Produces', typeChecker)
+  const producesDecorators = getDecorators(node, (identifier, canonicalName) => canonicalName === 'Produces', typeChecker)
 
   if (!producesDecorators?.length) {
     return []

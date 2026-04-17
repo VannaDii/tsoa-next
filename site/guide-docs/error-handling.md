@@ -8,9 +8,11 @@ lang: en-US
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using `npm`, `yarn` should work but was not tested.
+Examples in the linked setup guides include `npm`, `pnpm`, and `yarn` variants where the command differs.
 This guide assumes you followed the [getting started guide](./getting-started) or have a similar setup.
 :::
+
+Relevant API reference: [`ValidateError`](../reference/tsoa-next/classes/ValidateError.md), [`@Response`](../reference/tsoa-next/functions/Response.md), [`@Res`](../reference/tsoa-next/functions/Res.md), [`TsoaResponse`](../reference/tsoa-next/type-aliases/TsoaResponse.md), and [`Controller`](../reference/tsoa-next/classes/Controller.md).
 
 As you may have noticed after following all the steps from the [getting started guide](./getting-started), our server does not allow for invalid parameters, but the response isn't very ideal yet.
 

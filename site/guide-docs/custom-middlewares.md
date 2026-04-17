@@ -1,6 +1,7 @@
 # Custom Middlewares
 
 The `@Middlewares` decorator is used to apply custom middleware to an endpoint in your TypeScript code. This middleware intercepts incoming HTTP requests before they reach the endpoint and allows you to perform additional operations or modifications. It provides support for Express, Koa, and Hapi middlewares.
+Relevant API reference: [`@Middlewares`](../reference/tsoa-next/functions/Middlewares.md), [`@Request`](../reference/tsoa-next/functions/Request.md), [`Controller`](../reference/tsoa-next/classes/Controller.md), [`@Route`](../reference/tsoa-next/functions/Route.md), and [`@Get`](../reference/tsoa-next/functions/Get.md).
 
 ## Example
 

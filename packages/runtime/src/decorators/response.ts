@@ -5,27 +5,27 @@ import { createNoopClassMethodDecorator, createNoopMethodDecorator, createNoopPa
 /**
  * Declares the successful response status, description, and media types for an operation.
  *
- * @param _name The HTTP status code returned when the operation succeeds.
- * @param _description The response description shown in the generated OpenAPI document.
- * @param _produces The response media type or media types.
+ * @param name The HTTP status code returned when the operation succeeds.
+ * @param description The response description shown in the generated OpenAPI document.
+ * @param produces The response media type or media types.
  */
-export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(_name: string | number, _description?: string, _produces?: string | string[]): MethodDecorator {
+export function SuccessResponse<HeaderType extends IsValidHeader<HeaderType> = object>(name: string | number, description?: string, produces?: string | string[]): MethodDecorator {
   return createNoopMethodDecorator('success-response')
 }
 
 /**
  * Adds a documented response that can be attached to a method or a controller.
  *
- * @param _name The HTTP status code, OpenAPI response range, or `default`.
- * @param _description The response description shown in the generated OpenAPI document.
- * @param _example An example payload for the response schema.
- * @param _produces The response media type or media types.
+ * @param name The HTTP status code, OpenAPI response range, or `default`.
+ * @param description The response description shown in the generated OpenAPI document.
+ * @param example An example payload for the response schema.
+ * @param produces The response media type or media types.
  */
 export function Response<ExampleType, HeaderType extends IsValidHeader<HeaderType> = object>(
-  _name: HttpStatusCodeLiteral | HttpStatusCodeStringLiteral | OtherValidOpenApiHttpStatusCode,
-  _description?: string,
-  _example?: ExampleType,
-  _produces?: string | string[],
+  name: HttpStatusCodeLiteral | HttpStatusCodeStringLiteral | OtherValidOpenApiHttpStatusCode,
+  description?: string,
+  example?: ExampleType,
+  produces?: string | string[],
 ): MethodDecorator & ClassDecorator {
   return createNoopClassMethodDecorator('response')
 }
@@ -42,9 +42,9 @@ export function Res(): ParameterDecorator {
 /**
  * Overrides the response media type on a controller or a single action.
  *
- * @param _value The response media type, for example `application/json`.
+ * @param value The response media type, for example `application/json`.
  * See {@link https://swagger.io/docs/specification/media-types/ Swagger media-type documentation}.
  */
-export function Produces(_value: string): MethodDecorator & ClassDecorator {
+export function Produces(value: string): MethodDecorator & ClassDecorator {
   return createNoopClassMethodDecorator('produces')
 }

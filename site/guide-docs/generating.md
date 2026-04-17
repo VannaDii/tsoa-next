@@ -1,5 +1,7 @@
 # Generating Routes and OAS
 
+Relevant API reference: [`Config`](../reference/tsoa-next/interfaces/Config.md), [`generateRoutes`](../reference/@tsoa-next/cli/functions/generateRoutes.md), [`generateSpec`](../reference/@tsoa-next/cli/functions/generateSpec.md), [`generateSpecAndRoutes`](../reference/@tsoa-next/cli/functions/generateSpecAndRoutes.md), [`ExtendedRoutesConfig`](../reference/@tsoa-next/cli/interfaces/ExtendedRoutesConfig.md), and [`ExtendedSpecConfig`](../reference/@tsoa-next/cli/interfaces/ExtendedSpecConfig.md).
+
 ## Using CLI
 
 ### Basic Commands
@@ -65,11 +67,11 @@ tsoa routes --discover "./services"
 tsoa spec-and-routes --discover .
 ```
 
-You can find the Reference for the tsoa configuration file [here](../reference/interfaces/tsoa-next.Config.html)
+You can find the Reference for the tsoa configuration file [here](../reference/tsoa-next/interfaces/Config.md)
 
-For information on the configuration object (tsoa.json), you may also me interested in:
+For information on the configuration object (`tsoa.json`), you may also be interested in:
 
-[Configuration definition](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts)
+[`Config` interface reference](../reference/tsoa-next/interfaces/Config.md)
 
 [Configuration sample](https://github.com/tsoa-next/tsoa-next/blob/main/tests/tsoa.json)
 

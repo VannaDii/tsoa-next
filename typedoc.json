@@ -6,7 +6,13 @@
   ],
   "name": "tsoa-next",
   "includeVersion": true,
-  "out": "./.typedoc",
+  "plugin": [
+    "typedoc-plugin-markdown",
+    "typedoc-vitepress-theme"
+  ],
+  "useCodeBlocks": true,
+  "out": "./site/guide-docs/reference",
+  "docsRoot": "./site/guide-docs",
   "hostedBaseUrl": "https://tsoa-next.dev/reference/",
   "packageOptions": {
     "validation": {

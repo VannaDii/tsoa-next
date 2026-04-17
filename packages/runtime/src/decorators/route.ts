@@ -3,9 +3,9 @@ import { createNoopClassDecorator, createNoopHiddenDecorator } from './noop'
 /**
  * Declares the base route path for a controller.
  *
- * @param _name The controller path segment relative to the configured API base path.
+ * @param name The controller path segment relative to the configured API base path.
  */
-export function Route(_name?: string): ClassDecorator {
+export function Route(name?: string): ClassDecorator {
   return createNoopClassDecorator('route')
 }
 

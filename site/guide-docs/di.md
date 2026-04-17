@@ -2,8 +2,9 @@
 
 By default all the controllers are created by the auto-generated routes template using an empty default constructor.
 If you want to use dependency injection and let the DI-framework handle the creation of your controllers, we need set up an IoC Module tsoa can call.
+Relevant API reference: [`Config`](../reference/tsoa-next/interfaces/Config.md), [`RoutesConfig`](../reference/tsoa-next/interfaces/RoutesConfig.md), [`IocContainer`](../reference/tsoa-next/interfaces/IocContainer.md), [`IocContainerFactory`](../reference/tsoa-next/type-aliases/IocContainerFactory.md), and [`Controller`](../reference/tsoa-next/classes/Controller.md).
 
-To tell `tsoa-next` to use your DI-container you have to reference your module exporting the DI-container in the [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (e.g. `tsoa.json`):
+To tell `tsoa-next` to use your DI-container you have to reference your module exporting the DI-container in the [`Config`](../reference/tsoa-next/interfaces/Config.md) file (for example `tsoa.json`):
 
 ```js
 {
@@ -114,7 +115,7 @@ We usually don't want to create a new controller instance for every call, so let
 
 ::: danger
 
-If you rely on controller state (for example, because you're using `this.setHeaders` inherited by [Controller](../reference/classes/tsoa-next.Controller.html)), you need to inject a new Controller for every request.
+If you rely on controller state (for example, because you're using `this.setHeaders` inherited by [Controller](../reference/tsoa-next/classes/Controller.md)), you need to inject a new Controller for every request.
 Instead of `@provideSingleton`, please make sure to use `@fluentProvide` directly (which is the default way to `fluentProvide(identifier).inTransientScope()`).
 
 :::

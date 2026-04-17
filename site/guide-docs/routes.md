@@ -1,10 +1,12 @@
 # Consuming generated routes
 
+Relevant API reference: [`Config`](../reference/tsoa-next/interfaces/Config.md) and [`@Route`](../reference/tsoa-next/functions/Route.md).
+
 You have two options for how to tell tsoa where it can find the controllers that it will use to create the auto-generated `routes.ts` file.
 
 ## Using automatic controllers discovery
 
-You can tell `tsoa-next` to use automatic controller discovery by providing one or more [minimatch globs](http://www.globtester.com/) in the top-level `controllerPathGlobs` field of your [config](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/config.ts) file (for example `tsoa.json`).
+You can tell `tsoa-next` to use automatic controller discovery by providing one or more [minimatch globs](http://www.globtester.com/) in the top-level `controllerPathGlobs` field of your [`Config`](../reference/tsoa-next/interfaces/Config.md) file (for example `tsoa.json`).
 
 Pros:
 

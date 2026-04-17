@@ -9,10 +9,12 @@ lang: en-US
 
 [[toc]]
 
+Relevant API reference: [`Controller`](../reference/tsoa-next/classes/Controller.md), [`@Route`](../reference/tsoa-next/functions/Route.md), [`@Get`](../reference/tsoa-next/functions/Get.md), [`@Path`](../reference/tsoa-next/functions/Path.md), [`@Query`](../reference/tsoa-next/functions/Query.md), [`@Post`](../reference/tsoa-next/functions/Post.md), [`@Body`](../reference/tsoa-next/functions/Body.md), and [`@SuccessResponse`](../reference/tsoa-next/functions/SuccessResponse.md).
+
 ::: warning COMPATIBILITY NOTE
 This guide targets [express](https://expressjs.com) and assumes `tsoa-next`'s current support policy: Node.js 22 or newer.
 We verify support across the previous LTS, current LTS, and Node vNext in CI.
-We currently recommend using `npm`, `yarn` should work but was not tested.
+Examples below include `npm`, `pnpm`, and `yarn` variants where the command differs.
 :::
 
 ## Initializing our project
@@ -22,17 +24,51 @@ We currently recommend using `npm`, `yarn` should work but was not tested.
 mkdir tsoa-project
 cd tsoa-project
 
-# Create a package.json and initialize git
+# Initialize git
 git init
+```
+
+Create a `package.json` and `tsconfig.json` with your package manager of choice:
+
+::: code-group
+
+```shell [npm]
 npm init -y
-
-# Add our dependencies
-npm i tsoa-next express
-npm i -D typescript @types/node @types/express
-
-# Initialize tsconfig.json
 npm exec tsc -- --init
 ```
+
+```shell [pnpm]
+pnpm init
+pnpm exec tsc --init
+```
+
+```shell [yarn]
+yarn init -y
+yarn exec tsc --init
+```
+
+:::
+
+Install the app and TypeScript dependencies with your package manager of choice:
+
+::: code-group
+
+```shell [npm]
+npm i tsoa-next express
+npm i -D typescript @types/node @types/express
+```
+
+```shell [pnpm]
+pnpm add tsoa-next express
+pnpm add -D typescript @types/node @types/express
+```
+
+```shell [yarn]
+yarn add tsoa-next express
+yarn add -D typescript @types/node @types/express
+```
+
+:::
 
 Generated routes import from `tsoa-next`, so the package your application installs is also the package used by controllers and generated `RegisterRoutes` files.
 You can also find the published package on [npm](https://www.npmjs.com/package/tsoa-next).
@@ -68,7 +104,7 @@ Next, we set the output directory for out OpenAPI specification (OAS) and our `r
 We set the `specVersion` to `3` so tsoa will generate an OpenAPI v3 specification.
 You can also use `3.1` when you want OpenAPI 3.1 output.
 
-For a full list of all the possible config, take a look at the [API Reference](../reference/interfaces/tsoa-next.Config.html)
+For a full list of all the possible config, take a look at the [API Reference](../reference/tsoa-next/interfaces/Config.md)
 
 ::: tip
 While the default ts config will work for this guide, an improved tsconfig.json would look something like this:
@@ -187,10 +223,10 @@ export class UsersController extends Controller {
 ```
 
 Let's take a step back and talk about what's going on here.
-As you can hopefully already tell, we are defining a `/users/` route using the `@Route()` decorator above our controller class.
+As you can hopefully already tell, we are defining a `/users/` route using the [`@Route()`](../reference/tsoa-next/functions/Route.md) decorator above our controller class.
 
 Additionally, we define 2 methods: `getUser` and `createUser`.
-The `@Get()` decorator in combination with our base route `/users/` will tell tsoa to invoke this method for every _GET_ request to `/users/{{userId}}`, where _{userId}_ is a template.
+The [`@Get()`](../reference/tsoa-next/functions/Get.md) decorator in combination with our base route `/users/` will tell tsoa to invoke this method for every _GET_ request to `/users/{{userId}}`, where _{userId}_ is a template.
 
 ::: tip OpenAPI Path Templating
 Routing in tsoa is closely mirroring OpenAPI's path templating for compatibility reasons.
@@ -199,10 +235,10 @@ Path templating refers to the usage of template expressions, delimited by curly 
 
 Under the hood, this would be like defining `app.get('users/:userId')`.
 While express allows you to use regex-ish route definitions, we prefer to split the routing and the validation more clearly.
-Because you're asking for the _id_ to be a _number_ by using the `@Path()` decorator with an `userId` of type number, tsoa will reject passing i.e. a _string_ here.
+Because you're asking for the _id_ to be a _number_ by using the [`@Path()`](../reference/tsoa-next/functions/Path.md) decorator with an `userId` of type number, tsoa will reject passing i.e. a _string_ here.
 Similarly, if you want to accept a _string_ with a certain pattern, you can do that using JSON Schema annotations. You can learn more about that [here](#what-s-next).
 
-tsoa-next supports the usual path, query, header, and body decorators, and also supports multipart form-data decorators such as `@FormField()`, `@UploadedFile()`, and `@UploadedFiles()`, plus runtime-only injected parameters such as `@Request()` and `@Res()`.
+tsoa-next supports the usual path, query, header, and body decorators, and also supports multipart form-data decorators such as [`@FormField()`](../reference/tsoa-next/functions/FormField.md), [`@UploadedFile()`](../reference/tsoa-next/functions/UploadedFile.md), and [`@UploadedFiles()`](../reference/tsoa-next/functions/UploadedFiles.md), plus runtime-only injected parameters such as [`@Request()`](../reference/tsoa-next/functions/Request.md) and [`@Res()`](../reference/tsoa-next/functions/Res.md).
 
 ::: tip
 If the parameter name is equal to the http message parameter, you may omit the argument to the decorators, otherwise you may provide an argument:
@@ -259,13 +295,43 @@ Let's do that now:
 
 ```shell
 mkdir -p build # Create the build directory if it doesn't exist
+```
+
+::: code-group
+
+```shell [npm]
 npm exec tsoa -- spec-and-routes
 ```
 
+```shell [pnpm]
+pnpm exec tsoa spec-and-routes
+```
+
+```shell [yarn]
+yarn exec tsoa spec-and-routes
+```
+
+:::
+
 Now your generated files should have been created and you can compile TypeScript and start your server:
 
-```shell
+::: code-group
+
+```shell [npm]
 npm exec tsc -- --outDir build --experimentalDecorators
+```
+
+```shell [pnpm]
+pnpm exec tsc --outDir build --experimentalDecorators
+```
+
+```shell [yarn]
+yarn exec tsc --outDir build --experimentalDecorators
+```
+
+:::
+
+```shell
 node build/src/server.js
 ```
 
