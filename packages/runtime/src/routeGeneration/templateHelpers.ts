@@ -209,7 +209,6 @@ export class ValidationService {
     validators: Pick<IntegerValidator, 'isInt' | 'isLong'> | Pick<FloatValidator, 'isFloat' | 'isDouble'> | undefined,
     defaultMessage: string,
     primaryValidator: 'isInt' | 'isFloat',
-    secondaryValidator: 'isLong' | 'isDouble',
   ): string {
     if (primaryValidator === 'isInt') {
       const integerValidators = validators as Pick<IntegerValidator, 'isInt' | 'isLong'> | undefined
@@ -569,7 +568,7 @@ export class ValidationService {
 
   public validateInt(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: IntegerValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isInt(String(value))) {
-      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, `invalid integer number`, 'isInt', 'isLong'), value)
+      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, `invalid integer number`, 'isInt'), value)
       return
     }
 
@@ -588,7 +587,7 @@ export class ValidationService {
 
   public validateFloat(name: string, value: unknown, fieldErrors: FieldErrors, isBodyParam: boolean, validators?: FloatValidator, parent = ''): number | undefined {
     if (!this.hasCorrectJsType(value, 'number', isBodyParam) || !validator.isFloat(String(value))) {
-      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, 'invalid float number', 'isFloat', 'isDouble'), value)
+      fieldErrors[parent + name] = this.createFieldError(this.getNumericTypeErrorMessage(validators, 'invalid float number', 'isFloat'), value)
       return
     }
 
