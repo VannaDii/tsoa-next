@@ -27,18 +27,20 @@
   width: auto;
 }
 
-.VPHero .brand-lockup {
+.VPHomeHero .heading .name {
   display: inline-flex;
   align-items: center;
   gap: 0.3em;
   white-space: nowrap;
 }
 
-.VPHero .brand-lockup-logo {
+.VPHomeHero .heading .name::before {
+  content: '';
   display: block;
-  height: 1em;
-  width: auto;
+  width: 0.9em;
+  height: 0.9em;
   flex: 0 0 auto;
+  background: url('/tsoa-next-logo-590.png') center / contain no-repeat;
 }
 
 .vp-doc .home-search-section {
