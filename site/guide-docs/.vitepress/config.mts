@@ -19,7 +19,11 @@ const playgroundUrl = 'https://github.com/tsoa-next/playground'
 const npmPackageUrl = 'https://www.npmjs.com/package/tsoa-next'
 const socialImageUrl = new URL('/tsoa-next-social.png', siteHomeUrl).toString()
 const logoUrl = new URL('/tsoa-next-logo-590.png', siteHomeUrl).toString()
-const apiReferenceBasePath = normalizeBasePath(process.env.API_REFERENCE_URL || '/reference/')
+const siteOrigin = new URL(siteHomeUrl).origin
+const apiReferenceTarget = resolveReferenceTarget(process.env.API_REFERENCE_URL || '/reference/')
+const apiReferenceBasePath = apiReferenceTarget.basePath
+const apiReferenceBaseUrl = apiReferenceTarget.baseUrl
+const apiReferenceLink = apiReferenceTarget.linkHref
 const typedocSidebarPath = join(process.cwd(), 'site/guide-docs/reference/typedoc-sidebar.json')
 const referenceLinkPattern = /^(?:\.\.\/|\/)?reference\/(.*)$/
 const pageDescriptionCache = new Map<string, string>()
@@ -81,14 +85,43 @@ function normalizeBasePath(value: string) {
   return `/${trimmed.replace(/^\/+|\/+$/g, '')}/`
 }
 
+function resolveReferenceTarget(value: string) {
+  const trimmed = value.trim()
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    const parsedUrl = new URL(trimmed)
+    const basePath = normalizeBasePath(parsedUrl.pathname)
+    const baseUrl = new URL(basePath, `${parsedUrl.origin}/`).toString()
+
+    return {
+      basePath,
+      baseUrl,
+      linkHref: baseUrl,
+    }
+  }
+
+  const basePath = normalizeBasePath(trimmed)
+
+  return {
+    basePath,
+    baseUrl: new URL(basePath, siteHomeUrl).toString(),
+    linkHref: basePath,
+  }
+}
+
 function rewriteReferenceLink(href: string) {
   const match = href.match(referenceLinkPattern)
   if (!match) {
     return
   }
 
-  const rewrittenUrl = new URL(match[1], `https://tsoa-next.dev${apiReferenceBasePath}`)
-  return `${rewrittenUrl.pathname}${rewrittenUrl.search}${rewrittenUrl.hash}`
+  const rewrittenUrl = new URL(match[1], apiReferenceBaseUrl)
+
+  if (rewrittenUrl.origin === siteOrigin) {
+    return `${rewrittenUrl.pathname}${rewrittenUrl.search}${rewrittenUrl.hash}`
+  }
+
+  return rewrittenUrl.toString()
 }
 
 function getTypedocSidebar(): DefaultTheme.SidebarItem[] {
@@ -496,7 +529,7 @@ export default defineConfig({
       },
       {
         text: 'API Reference',
-        link: apiReferenceBasePath,
+        link: apiReferenceLink,
         noIcon: true,
         target: '_self',
       },

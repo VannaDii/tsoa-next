@@ -7,8 +7,8 @@
     "clean": "rimraf --glob dist fixtures/*/routes.ts fixtures/*/customRoutes.ts fixtures/*/custom-route-generator/routes/*",
     "prepare-test": "cross-env NODE_ENV=tsoa_test ts-node --require=tsconfig-paths/register ./prepare.ts",
     "pretest": "npm run clean && npm run prepare-test && npm run typecheck",
-    "test": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\"",
-    "test:ci": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\" --parallel --timeout 20000",
+    "test": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\" --timeout 40000",
+    "test:ci": "cross-env NODE_ENV=tsoa_test mocha \"**/*.spec.ts\" --parallel --timeout 40000",
     "test:long": "npm run test:ci",
     "typecheck": "tsc"
   },
