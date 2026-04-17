@@ -11,7 +11,9 @@ hero:
     - text: Playground →
       link: https://github.com/tsoa-next/playground
     - text: LLMs 🧠 →
-      link: https://tsoa-next.dev/llms.txt
+      link: ./llms.txt
+      target: _blank
+      rel: noreferrer
 
 features:
   - title: "TypeScript ♥ OpenAPI"
