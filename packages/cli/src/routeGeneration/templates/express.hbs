@@ -84,6 +84,52 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
     const templateService = new ExpressTemplateService(models, additionalProps);
     {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
+    {{#each controllers}}
+    for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
+
+        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
+        if (registeredGetPaths.has(specFullPath)) {
+            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
+        }
+        registeredGetPaths.add(specFullPath);
+
+        app.get(specFullPath, async function {{name}}_specPath(request: ExRequest, response: ExResponse, next: any) {
+            try {
+                const specResponse = await resolveSpecPathResponse({
+                    controllerClass: {{name}},
+                    fullPath: specFullPath,
+                    request,
+                    response,
+                    runtime: 'express',
+                    specGenerator,
+                    specPath,
+                });
+
+                if (specResponse.contentType) {
+                    response.type(specResponse.contentType);
+                }
+
+                response.status(200);
+                if (typeof specResponse.body === 'string') {
+                    response.send(specResponse.body);
+                    return;
+                }
+
+                pipeline(specResponse.body, response, error => {
+                    if (error) {
+                        next(error);
+                    }
+                });
+                return;
+            } catch (err) {
+                return next(err);
+            }
+        });
+    }
+    {{/each}}
     {{/if}}
     {{#each controllers}}
     {{#each actions}}
@@ -143,54 +189,6 @@ export function RegisterRoutes(app: Router,opts?:{validation?: Tsoa.ValidationCo
         });
     {{/each}}
     {{/each}}
-    {{#if useSpecPaths}}
-    {{#each controllers}}
-    for (const specPath of fetchSpecPaths({{name}})) {
-        if (specPath.gate === false) {
-            continue;
-        }
-
-        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
-        if (registeredGetPaths.has(specFullPath)) {
-            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
-        }
-        registeredGetPaths.add(specFullPath);
-
-        app.get(specFullPath, async function {{name}}_specPath(request: ExRequest, response: ExResponse, next: any) {
-            try {
-                const specResponse = await resolveSpecPathResponse({
-                    controllerClass: {{name}},
-                    fullPath: specFullPath,
-                    request,
-                    response,
-                    runtime: 'express',
-                    specGenerator,
-                    specPath,
-                });
-
-                if (specResponse.contentType) {
-                    response.type(specResponse.contentType);
-                }
-
-                response.status(200);
-                if (typeof specResponse.body === 'string') {
-                    response.send(specResponse.body);
-                    return;
-                }
-
-                pipeline(specResponse.body, response, error => {
-                    if (error) {
-                        next(error);
-                    }
-                });
-                return;
-            } catch (err) {
-                return next(err);
-            }
-        });
-    }
-    {{/each}}
-    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

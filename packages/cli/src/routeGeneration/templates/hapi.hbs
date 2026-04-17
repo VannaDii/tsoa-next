@@ -72,6 +72,55 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
     );
     {{#if useSpecPaths}}
     const registeredGetPaths = new Set<string>({{{json existingGetPaths}}});
+    {{#each controllers}}
+    for (const specPath of fetchSpecPaths({{name}})) {
+        if (specPath.gate === false) {
+            continue;
+        }
+
+        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
+        if (registeredGetPaths.has(specFullPath)) {
+            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
+        }
+        registeredGetPaths.add(specFullPath);
+
+        server.route({
+            method: 'get',
+            path: specFullPath,
+            options: {
+                handler: async function {{name}}_specPath(request: Request, h: ResponseToolkit) {
+                    try {
+                        const specResponse = await resolveSpecPathResponse({
+                            controllerClass: {{name}},
+                            fullPath: specFullPath,
+                            request,
+                            response: h,
+                            runtime: 'hapi',
+                            specGenerator,
+                            specPath,
+                        });
+
+                        const response = h.response(specResponse.body).code(200);
+                        if (specResponse.contentType) {
+                            response.type(specResponse.contentType);
+                        }
+
+                        return response;
+                    } catch (error: any) {
+                        if (isBoom(error)) {
+                            throw error;
+                        }
+
+                        const errorMessage = error instanceof Error ? error.message : error?.message;
+                        const boomErr = boomify(error instanceof Error ? error : new Error(errorMessage), { statusCode: error?.status || 500 });
+                        boomErr.output.payload = { ...boomErr.output.payload, message: errorMessage };
+                        throw boomErr;
+                    }
+                }
+            }
+        });
+    }
+    {{/each}}
     {{/if}}
     {{#each controllers}}
     {{#each actions}}
@@ -156,57 +205,6 @@ export function RegisterRoutes(server: any, opts?: { validation?: Tsoa.Validatio
         });
     {{/each}}
     {{/each}}
-    {{#if useSpecPaths}}
-    {{#each controllers}}
-    for (const specPath of fetchSpecPaths({{name}})) {
-        if (specPath.gate === false) {
-            continue;
-        }
-
-        const specFullPath = normalisePath('{{../basePath}}{{path}}' + specPath.normalizedPath, '/', '', false);
-        if (registeredGetPaths.has(specFullPath)) {
-            throw new Error(`Duplicate GET route detected while registering @SpecPath for {{name}} at '${specFullPath}'.`);
-        }
-        registeredGetPaths.add(specFullPath);
-
-        server.route({
-            method: 'get',
-            path: specFullPath,
-            options: {
-                handler: async function {{name}}_specPath(request: Request, h: ResponseToolkit) {
-                    try {
-                        const specResponse = await resolveSpecPathResponse({
-                            controllerClass: {{name}},
-                            fullPath: specFullPath,
-                            request,
-                            response: h,
-                            runtime: 'hapi',
-                            specGenerator,
-                            specPath,
-                        });
-
-                        const response = h.response(specResponse.body).code(200);
-                        if (specResponse.contentType) {
-                            response.type(specResponse.contentType);
-                        }
-
-                        return response;
-                    } catch (error: any) {
-                        if (isBoom(error)) {
-                            throw error;
-                        }
-
-                        const errorMessage = error instanceof Error ? error.message : error?.message;
-                        const boomErr = boomify(error instanceof Error ? error : new Error(errorMessage), { statusCode: error?.status || 500 });
-                        boomErr.output.payload = { ...boomErr.output.payload, message: errorMessage };
-                        throw boomErr;
-                    }
-                }
-            }
-        });
-    }
-    {{/each}}
-    {{/if}}
     {{#if useSecurity}}
 
     function authenticateMiddleware(security: TsoaRoute.Security[] = []) {

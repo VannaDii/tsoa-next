@@ -104,7 +104,7 @@ export function FormField(_name?: string): ParameterDecorator {
  * Overrides the media type used to document a request body for a single action.
  *
  * @param _value The request body media type, for example `application/json`.
- * See https://swagger.io/docs/specification/describing-request-body/.
+ * See {@link https://swagger.io/docs/specification/describing-request-body/ Swagger request-body documentation}.
  */
 export function Consumes(_value: string): MethodDecorator {
   return createNoopMethodDecorator('consumes')

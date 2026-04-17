@@ -4,12 +4,16 @@ import { verifyGetRequest, verifyRequest } from './utils'
 import { cleanupMockUiPeers, installMockUiPeers } from '../utils/mockUiPeers'
 
 type ExpressSpecPathFixture = typeof import('../fixtures/express-specpath/server')
+type ExpressSpecPathPriorityFixture = typeof import('../fixtures/express-specpath-priority/server')
 type KoaSpecPathFixture = typeof import('../fixtures/koa-specpath/server')
+type KoaSpecPathPriorityFixture = typeof import('../fixtures/koa-specpath-priority/server')
 type HapiSpecPathFixture = typeof import('../fixtures/hapi-specpath/server')
 type ControllerFixture = typeof import('../fixtures/controllers/specPathController')
 
 let expressFixture: ExpressSpecPathFixture
+let expressPriorityFixture: ExpressSpecPathPriorityFixture
 let koaFixture: KoaSpecPathFixture
+let koaPriorityFixture: KoaSpecPathPriorityFixture
 let hapiFixture: HapiSpecPathFixture
 let controllerFixture: ControllerFixture
 
@@ -18,7 +22,9 @@ describe('SpecPath integration', () => {
     installMockUiPeers()
     controllerFixture = require('../fixtures/controllers/specPathController') as ControllerFixture
     expressFixture = require('../fixtures/express-specpath/server') as ExpressSpecPathFixture
+    expressPriorityFixture = require('../fixtures/express-specpath-priority/server') as ExpressSpecPathPriorityFixture
     koaFixture = require('../fixtures/koa-specpath/server') as KoaSpecPathFixture
+    koaPriorityFixture = require('../fixtures/koa-specpath-priority/server') as KoaSpecPathPriorityFixture
     hapiFixture = require('../fixtures/hapi-specpath/server') as HapiSpecPathFixture
     await hapiFixture.ready
   })
@@ -30,6 +36,16 @@ describe('SpecPath integration', () => {
   after(async () => {
     await new Promise<void>((resolveClose, reject) => {
       koaFixture.server.close(error => {
+        if (error) {
+          reject(error)
+          return
+        }
+        resolveClose()
+      })
+    })
+
+    await new Promise<void>((resolveClose, reject) => {
+      koaPriorityFixture.server.close(error => {
         if (error) {
           reject(error)
           return
@@ -122,6 +138,20 @@ describe('SpecPath integration', () => {
 
     await verifyGetRequest(hapiFixture.server.listener, '/v1/SpecPath/swagger-ui', (_err, res) => {
       expect(res.text).to.contain('SwaggerUIBundle')
+    })
+  })
+
+  it('registers spec routes before dynamic first-segment routes', async () => {
+    await verifyGetRequest(expressPriorityFixture.app, '/v1/SpecPath/spec', (_err, res) => {
+      expect(res.type).to.equal('application/json')
+      expect(res.body).to.have.property('openapi', '3.1.0')
+      expect(res.body).not.to.have.property('matched', 'dynamic')
+    })
+
+    await verifyGetRequest(koaPriorityFixture.server, '/v1/SpecPath/spec', (_err, res) => {
+      expect(res.type).to.equal('application/json')
+      expect(res.body).to.have.property('openapi', '3.1.0')
+      expect(res.body).not.to.have.property('matched', 'dynamic')
     })
   })
 

@@ -146,6 +146,17 @@ const createRuntimeSpecConfig = (entryFile: string) => ({
         runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/express-specpath/server.ts'),
       }),
     ),
+    log('Express Route Generation, SpecPath priority', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/express-specpath-priority/server.ts',
+        middleware: 'express',
+        routesDir: './fixtures/express-specpath-priority',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/express-specpath-priority/server.ts'),
+      }),
+    ),
     log('Koa Route Generation', () =>
       generateRoutes({
         noImplicitAdditionalProperties: 'silently-remove-extras',
@@ -166,6 +177,17 @@ const createRuntimeSpecConfig = (entryFile: string) => ({
         middleware: 'koa',
         routesDir: './fixtures/koa-specpath',
         runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/koa-specpath/server.ts'),
+      }),
+    ),
+    log('Koa Route Generation, SpecPath priority', () =>
+      generateRoutes({
+        noImplicitAdditionalProperties: 'silently-remove-extras',
+        bodyCoercion: true,
+        basePath: '/v1',
+        entryFile: './fixtures/koa-specpath-priority/server.ts',
+        middleware: 'koa',
+        routesDir: './fixtures/koa-specpath-priority',
+        runtimeSpecConfig: createRuntimeSpecConfig('./fixtures/koa-specpath-priority/server.ts'),
       }),
     ),
 
