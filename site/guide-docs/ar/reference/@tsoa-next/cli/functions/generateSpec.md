@@ -1,9 +1,9 @@
 ---
-lastUpdated: 2026-04-20T21:59:41.307Z
+lastUpdated: 2026-04-21T02:17:31.081Z
 ---
 [tsoa-next](../../../packages.md) / [@tsoa-next/cli](../index.md) / generateSpec
 
-# Function: generateSpeclock
+# Function: generateSpec()
 
 ```ts
 function generateSpec(
@@ -14,7 +14,7 @@ function generateSpec(
 defaultNumberType?): Promise<Metadata>;
 ```
 
-محددة في: [cli/src/module/generate-spec.ts:22](https://github.com/tsoa-next/tsoa-next/blob/main/packages/cli/src/module/generate-spec.ts#L22)
+Defined in: [cli/src/module/generate-spec.ts:22](https://github.com/tsoa-next/tsoa-next/blob/main/packages/cli/src/module/generate-spec.ts#L22)
 
 جينات OpenAPI وثيقة على الأقراص وتعيد البيانات الوصفية المستخدمة لبناءها.
 

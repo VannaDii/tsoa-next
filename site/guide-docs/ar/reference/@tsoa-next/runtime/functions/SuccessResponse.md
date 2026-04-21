@@ -1,9 +1,9 @@
 ---
-lastUpdated: 2026-04-20T21:59:41.311Z
+lastUpdated: 2026-04-21T02:17:31.086Z
 ---
 [tsoa-next](../../../packages.md) / [@tsoa-next/runtime](../index.md) / SuccessResponse
 
-# المهمة: النجاح في الاستجابة
+# Function: SuccessResponse()
 
 ```ts
 function SuccessResponse<HeaderType>(
@@ -12,7 +12,7 @@ function SuccessResponse<HeaderType>(
    produces?): MethodDecorator;
 ```
 
-محددة في: [packages/runtime/src/decorators/response.ts:12](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/decorators/response.ts#L12)
+Defined in: [packages/runtime/src/decorators/response.ts:12](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/decorators/response.ts#L12)
 
 تعلن حالة الاستجابة الناجحة، والوصف، وأنواع وسائط الإعلام بالنسبة لعملية ما.
 
@@ -31,7 +31,7 @@ function SuccessResponse<HeaderType>(
 
 `string` \| `number`
 
-The HTTP status code returned when the operation succeededs.
+The HTTP status code returned when the operation succeeds.
 
 ### description?
 

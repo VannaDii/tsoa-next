@@ -54,6 +54,7 @@ const exactTranslations = {
       'اطّلع على أمثلة النماذج في [الاختبارات](https://github.com/tsoa-next/tsoa-next/blob/main/tests/fixtures/testModel.ts)',
     'To contribute (via a PR), please first see the [Contributing Guide](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)':
       'للمساهمة (عبر طلب سحب PR)، يرجى الاطلاع أولاً على [دليل المساهمة](https://github.com/tsoa-next/tsoa-next/blob/main/docs/CONTRIBUTING.md)',
+    'The HTTP status code returned when the operation succeeds.': 'The HTTP status code returned when the operation succeeds.',
   },
   bn: {
     'Project Lineage': 'প্রকল্পের উৎস',

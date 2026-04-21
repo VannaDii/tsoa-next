@@ -1,15 +1,15 @@
 ---
-lastUpdated: 2026-04-20T21:59:41.308Z
+lastUpdated: 2026-04-21T02:17:31.083Z
 ---
 [tsoa-next](../../../packages.md) / [@tsoa-next/runtime](../index.md) / BodyProp
 
-# Function: BodyProplock
+# Function: BodyProp()
 
 ```ts
 function BodyProp(name?): ParameterDecorator;
 ```
 
-محددة في: [packages/runtime/src/decorators/parameter.ts:15](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/decorators/parameter.ts#L15)
+Defined in: [packages/runtime/src/decorators/parameter.ts:15](https://github.com/tsoa-next/tsoa-next/blob/main/packages/runtime/src/decorators/parameter.ts#L15)
 
 يربط عقاراً واحداً من جثة الطلب إلى بارامتر متحكم
 
