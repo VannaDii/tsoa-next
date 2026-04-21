@@ -353,8 +353,68 @@ function getExactTranslation(localeKey, text) {
   return exactTranslations[localeKey]?.[text]
 }
 
+function consumeMarkdownLink(text, startIndex) {
+  if (text[startIndex] !== '[') {
+    return -1
+  }
+
+  const labelEndIndex = text.indexOf(']', startIndex + 1)
+  if (labelEndIndex <= startIndex + 1 || text[labelEndIndex + 1] !== '(') {
+    return -1
+  }
+
+  const targetEndIndex = text.indexOf(')', labelEndIndex + 2)
+  if (targetEndIndex <= labelEndIndex + 2) {
+    return -1
+  }
+
+  return targetEndIndex + 1
+}
+
 function isReferenceBreadcrumbLine(line) {
-  return /^\[[^\]]+\]\([^)]+\)(?:\s*\/\s*(?:\[[^\]]+\]\([^)]+\)|[^\n]+))+$/u.test(line.trim())
+  const trimmedLine = line.trim()
+  if (!trimmedLine.startsWith('[')) {
+    return false
+  }
+
+  let index = consumeMarkdownLink(trimmedLine, 0)
+  if (index === -1) {
+    return false
+  }
+
+  let foundSeparator = false
+
+  while (index < trimmedLine.length) {
+    while (trimmedLine[index] === ' ') {
+      index += 1
+    }
+
+    if (trimmedLine[index] !== '/') {
+      return false
+    }
+
+    foundSeparator = true
+    index += 1
+
+    while (trimmedLine[index] === ' ') {
+      index += 1
+    }
+
+    if (index >= trimmedLine.length) {
+      return false
+    }
+
+    if (trimmedLine[index] !== '[') {
+      return true
+    }
+
+    index = consumeMarkdownLink(trimmedLine, index)
+    if (index === -1) {
+      return false
+    }
+  }
+
+  return foundSeparator
 }
 
 async function requestLibreTranslate(texts, localeKey) {
